@@ -1,1 +1,75 @@
-/* You can add global styles to this file, and also import other style files */
+/* Tokens de diseño extraídos del prototipo de Claude Design (docs/docs/moduloA). */
+@import '@fontsource/figtree/400.css';
+@import '@fontsource/figtree/500.css';
+@import '@fontsource/figtree/600.css';
+@import '@fontsource/figtree/700.css';
+
+:root {
+  --fuente: 'Figtree', system-ui, sans-serif;
+
+  --color-fondo: #f4f6f5;
+  --color-superficie: #ffffff;
+  --color-superficie-sutil: #edf1ef;
+  --color-texto: #15201b;
+  --color-texto-medio: #3e4a45;
+  --color-texto-secundario: #56635d;
+  --color-borde: #c9d2ce;
+  --color-borde-suave: #dde3e0;
+  --color-velo: rgb(21 32 27 / 0.55);
+
+  --color-primario: #0e6b58;
+  --color-primario-hover: #0a5243;
+  --color-primario-suave: #e3f1ec;
+  --color-sobre-primario: #ffffff;
+
+  --color-exito: #135a30;
+  --color-exito-fondo: #e3f4e8;
+  --color-exito-borde: #bfe2cb;
+  --color-aviso: #9a3f06;
+  --color-aviso-fondo: #fcefe3;
+  --color-aviso-borde: #f2d3b5;
+  --color-info: #16337a;
+  --color-info-fondo: #e6edfb;
+  --color-info-borde: #c7d5f5;
+
+  --radio-control: 10px;
+  --radio-tarjeta: 12px;
+  --radio-panel: 16px;
+  --radio-pildora: 999px;
+
+  --texto-xs: 13px;
+  --texto-s: 14px;
+  --texto-m: 15px;
+  --texto-l: 16px;
+  --texto-titulo: 28px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--fuente);
+  font-size: var(--texto-m);
+  line-height: 1.45;
+}
+
+a {
+  color: var(--color-primario);
+}
+
+a:hover {
+  color: var(--color-primario-hover);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-primario);
+  outline-offset: 2px;
+}
