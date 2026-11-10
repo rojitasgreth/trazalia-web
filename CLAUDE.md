@@ -1,3 +1,12 @@
+## Proyecto Trazalia (prevalece sobre las pautas generales de abajo)
+
+- **Fuentes de verdad:** antes de proponer o implementar cambios, lee el Documento Cero y el spec vigente del módulo. Están en `fisio/docs/docs/`, fuera de este repositorio. El prototipo HTML de cada módulo es la referencia visual que manda.
+- **Estado de las decisiones:** distingue CONFIRMADO, PROPUESTA y PENDIENTE. Ante una contradicción o un riesgo de seguridad, detente y pregunta.
+- **Formularios:** el Documento Cero (§6) tiene CONFIRMADO usar formularios reactivos. No uses Signal Forms sin aprobación.
+- **Idioma:** el dominio va en español (archivos, clases, signals, rutas). Las APIs de Angular se quedan en inglés.
+- **Tokens:** los access y refresh tokens solo viajan en cookies `HttpOnly`. Nunca los guardes en `localStorage` ni en `sessionStorage`.
+- **Estilos:** usa los tokens de `src/styles.css` y no escribas colores fijos. Usa componentes propios más Angular CDK; no uses Angular Material.
+
 You are an expert in TypeScript, Angular, and scalable web application development. You write functional, maintainable, performant, and accessible code following Angular and TypeScript best practices.
 
 ## TypeScript Best Practices

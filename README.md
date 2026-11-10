@@ -1,59 +1,41 @@
-# TrazaliaWeb
+# trazalia-web
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.6.
+Frontend de Trazalia, la aplicación SaaS de gestión fisioterapéutica. Está hecho con Angular 22 (standalone y zoneless) y Angular CDK, y corre sobre Node.js 26 LTS.
 
-## Development server
+Las fuentes de verdad son el **Documento Cero** y el **spec de cada módulo**, junto con el prototipo de diseño. Todo vive en `fisio/docs/docs/`, fuera de este repositorio.
 
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Puesta en marcha
 
 ```bash
-ng generate component component-name
+npm ci
+npm start          # http://localhost:4200, con /api redirigido a http://localhost:3000
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Para ver datos reales, la API (`trazalia-api`) tiene que estar corriendo. Sin ella, la aplicación muestra que no hay conexión con el servidor.
 
-```bash
-ng generate --help
+## Scripts
+
+| Script | Qué hace |
+|---|---|
+| `start` | Servidor de desarrollo con proxy a la API |
+| `test` / `test:cov` | Pruebas unitarias con Vitest |
+| `e2e` | Pruebas E2E con Playwright en escritorio y móvil (390 px) |
+| `lint`, `format:check` | Calidad; las mismas verificaciones que ejecuta el CI |
+| `build` | Compilación de producción en `dist/trazalia-web/browser` |
+
+## Estructura
+
+```
+src/app/
+  nucleo/            servicios singleton: acceso a la API, sesión, interceptores
+  compartido/ui/     componentes reutilizables del sistema de diseño
+  funcionalidades/   un directorio por funcionalidad, cargada de forma diferida
+src/styles.css       tokens de diseño extraídos del prototipo
+e2e/                 pruebas Playwright
 ```
 
-## Building
+## Seguridad
 
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- Los tokens viajan solo en cookies `HttpOnly`. Nunca se guardan en `localStorage` ni en `sessionStorage`.
+- Angular envía la cabecera `X-XSRF-TOKEN` a partir de la cookie `XSRF-TOKEN` (CSRF double-submit).
+- Ocultar algo en la interfaz no equivale a autorizar: toda autorización se valida en el backend.

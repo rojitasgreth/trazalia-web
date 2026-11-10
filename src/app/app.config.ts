@@ -1,10 +1,17 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { provideHttpClient, withFetch, withXsrfConfiguration } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes)
-  ]
+    provideRouter(routes),
+    // CSRF double-submit (DP-08): Angular copia la cookie XSRF-TOKEN en la cabecera
+    // X-XSRF-TOKEN de las peticiones que modifican datos hacia nuestro propio origen.
+    provideHttpClient(
+      withFetch(),
+      withXsrfConfiguration({ cookieName: 'XSRF-TOKEN', headerName: 'X-XSRF-TOKEN' }),
+    ),
+  ],
 };
