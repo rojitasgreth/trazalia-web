@@ -29,7 +29,11 @@ jobs:
         run: npm run build
 
       - name: Navegador para E2E
-        run: npx playwright install --with-deps chromium
+        # Sin --with-deps: evita el apt-get de paquetes de fuentes opcionales
+        # (falló varias veces por DNS en los mirrors de Ubuntu); la imagen
+        # ubuntu-latest de GitHub ya trae las librerías que Chromium necesita
+        # para correr, solo le faltan esas fuentes que esta suite no usa.
+        run: npx playwright install chromium
       - name: Pruebas E2E
         run: npm run e2e
       - uses: actions/upload-artifact@v7

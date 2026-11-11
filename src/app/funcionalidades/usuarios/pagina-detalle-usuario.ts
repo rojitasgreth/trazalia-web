@@ -60,6 +60,11 @@ import type { RolUsuario, SesionPropia } from '../../core/auth/auth.model';
               Reenviar invitación
             </button>
           }
+          @if (puedeDesbloquear()) {
+            <button type="button" class="boton-secundario" (click)="desbloquear()">
+              Desbloquear
+            </button>
+          }
           @if (puedeInactivar()) {
             <button type="button" class="boton-peligro" (click)="inactivar()">Inactivar</button>
           }
@@ -349,6 +354,7 @@ export class PaginaDetalleUsuario {
   protected readonly puedeInactivar = computed(
     () => this.usuario()?.estado !== 'INACTIVO' && !this.esMiPropiaCuenta(),
   );
+  protected readonly puedeDesbloquear = computed(() => this.usuario()?.estado === 'BLOQUEADO');
 
   protected readonly formulario = this.fb.nonNullable.group({
     nombre: ['', [Validators.required]],
@@ -401,6 +407,10 @@ export class PaginaDetalleUsuario {
 
   protected reenviarInvitacion(): void {
     this.ejecutarAccion(this.api.reenviarInvitacion(this.idUsuario), 'Invitación reenviada.');
+  }
+
+  protected desbloquear(): void {
+    this.ejecutarAccion(this.api.desbloquear(this.idUsuario), 'Usuario desbloqueado.');
   }
 
   protected cerrarSesion(idSesion: string): void {

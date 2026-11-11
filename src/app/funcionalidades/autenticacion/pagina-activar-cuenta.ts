@@ -1,94 +1,75 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
-import {
-  FormBuilder,
-  ReactiveFormsModule,
-  ValidationErrors,
-  Validators,
-  type AbstractControl,
-} from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthApi } from '../../core/auth/auth-api';
+import {
+  contrasenasCoinciden,
+  sinEspacios,
+} from '../../compartido/formularios/validadores-contrasena';
+import { EnlaceInvalido } from '../../compartido/ui/enlace-invalido/enlace-invalido';
 import { Marca } from '../../compartido/ui/marca/marca';
-
-function sinEspacios(control: AbstractControl): ValidationErrors | null {
-  return typeof control.value === 'string' && /\s/.test(control.value)
-    ? { sinEspacios: true }
-    : null;
-}
-
-function contrasenasCoinciden(control: AbstractControl): ValidationErrors | null {
-  const contrasena = control.get('contrasena')?.value;
-  const confirmar = control.get('confirmarContrasena')?.value;
-  return contrasena && confirmar && contrasena !== confirmar ? { noCoinciden: true } : null;
-}
 
 /** A11/A12 · Activación de cuenta desde el enlace de invitación (BR-007/008). */
 @Component({
   selector: 'app-pagina-activar-cuenta',
-  imports: [ReactiveFormsModule, RouterLink, Marca],
+  imports: [ReactiveFormsModule, RouterLink, Marca, EnlaceInvalido],
   template: `
-    <main class="contenedor">
-      <div class="tarjeta">
-        <app-marca />
+    @if (!token() || enlaceInvalido()) {
+      <app-enlace-invalido />
+    } @else {
+      <main class="contenedor">
+        <div class="tarjeta">
+          <app-marca />
 
-        @if (!token()) {
-          <h1>Enlace inválido</h1>
-          <p>
-            Este enlace de activación no es válido. Pide a tu administrador que te reenvíe la
-            invitación.
-          </p>
-          <a routerLink="/iniciar-sesion" class="boton-primario">Ir a iniciar sesión</a>
-        } @else if (activada()) {
-          <h1>Cuenta activada</h1>
-          <p>Tu contraseña quedó creada. Ya puedes iniciar sesión.</p>
-          <a routerLink="/iniciar-sesion" class="boton-primario">Ir a iniciar sesión</a>
-        } @else {
-          <h1>Crea tu contraseña</h1>
-          <form [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
-            <label for="contrasena">Contraseña</label>
-            <input
-              id="contrasena"
-              type="password"
-              formControlName="contrasena"
-              autocomplete="new-password"
-              [attr.aria-invalid]="mostrarErrorCampo('contrasena')"
-            />
-            @if (mostrarErrorCampo('contrasena')) {
-              <p class="error-campo">Debe tener entre 8 y 128 caracteres y no contener espacios.</p>
-            }
-
-            <label for="confirmarContrasena">Confirmar contraseña</label>
-            <input
-              id="confirmarContrasena"
-              type="password"
-              formControlName="confirmarContrasena"
-              autocomplete="new-password"
-              [attr.aria-invalid]="mostrarErrorConfirmacion()"
-            />
-            @if (mostrarErrorConfirmacion()) {
-              <p class="error-campo">Las contraseñas no coinciden.</p>
-            }
-
-            @if (error()) {
-              <p class="error" role="alert">{{ error() }}</p>
-            }
-
-            <button
-              type="submit"
-              class="boton-primario"
-              [disabled]="formulario.invalid || enviando()"
-            >
-              @if (enviando()) {
-                Creando cuenta…
-              } @else {
-                Activar cuenta
+          @if (activada()) {
+            <h1>Cuenta activada</h1>
+            <p>Tu contraseña quedó creada. Ya puedes iniciar sesión.</p>
+            <a routerLink="/iniciar-sesion" class="boton-primario">Ir a iniciar sesión</a>
+          } @else {
+            <h1>Crea tu contraseña</h1>
+            <form [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
+              <label for="contrasena">Contraseña</label>
+              <input
+                id="contrasena"
+                type="password"
+                formControlName="contrasena"
+                autocomplete="new-password"
+                [attr.aria-invalid]="mostrarErrorCampo('contrasena')"
+              />
+              @if (mostrarErrorCampo('contrasena')) {
+                <p class="error-campo">
+                  Debe tener entre 8 y 32 caracteres y no contener espacios.
+                </p>
               }
-            </button>
-          </form>
-        }
-      </div>
-    </main>
+
+              <label for="confirmarContrasena">Confirmar contraseña</label>
+              <input
+                id="confirmarContrasena"
+                type="password"
+                formControlName="confirmarContrasena"
+                autocomplete="new-password"
+                [attr.aria-invalid]="mostrarErrorConfirmacion()"
+              />
+              @if (mostrarErrorConfirmacion()) {
+                <p class="error-campo">Las contraseñas no coinciden.</p>
+              }
+
+              <button
+                type="submit"
+                class="boton-primario"
+                [disabled]="formulario.invalid || enviando()"
+              >
+                @if (enviando()) {
+                  Creando cuenta…
+                } @else {
+                  Activar cuenta
+                }
+              </button>
+            </form>
+          }
+        </div>
+      </main>
+    }
   `,
   styles: `
     :host {
@@ -140,15 +121,6 @@ function contrasenasCoinciden(control: AbstractControl): ValidationErrors | null
       font-size: var(--texto-xs);
       color: var(--color-aviso);
     }
-    .error {
-      margin: 0;
-      padding: 8px 10px;
-      border-radius: var(--radio-control);
-      background: var(--color-aviso-fondo);
-      border: 1px solid var(--color-aviso-borde);
-      color: var(--color-aviso);
-      font-size: var(--texto-s);
-    }
     .boton-primario {
       margin-top: 8px;
       padding: 11px 16px;
@@ -180,13 +152,13 @@ export class PaginaActivarCuenta {
   protected readonly token = signal(inject(ActivatedRoute).snapshot.queryParamMap.get('token'));
   protected readonly enviando = signal(false);
   protected readonly activada = signal(false);
-  protected readonly error = signal<string | null>(null);
+  protected readonly enlaceInvalido = signal(false);
 
   protected readonly formulario = this.fb.nonNullable.group(
     {
       contrasena: [
         '',
-        [Validators.required, Validators.minLength(8), Validators.maxLength(128), sinEspacios],
+        [Validators.required, Validators.minLength(8), Validators.maxLength(32), sinEspacios],
       ],
       confirmarContrasena: ['', [Validators.required]],
     },
@@ -208,7 +180,6 @@ export class PaginaActivarCuenta {
     if (this.formulario.invalid || this.enviando() || !token) {
       return;
     }
-    this.error.set(null);
     this.enviando.set(true);
 
     this.authApi
@@ -218,13 +189,11 @@ export class PaginaActivarCuenta {
           this.enviando.set(false);
           this.activada.set(true);
         },
-        error: (error: unknown) => {
+        // Un 400 en este endpoint siempre significa token inexistente,
+        // vencido o ya usado: se muestra la misma pantalla compartida.
+        error: () => {
           this.enviando.set(false);
-          const mensaje =
-            error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
-              ? error.error.message
-              : 'No se pudo activar la cuenta. El enlace puede haber vencido o ya haberse usado.';
-          this.error.set(mensaje);
+          this.enlaceInvalido.set(true);
         },
       });
   }

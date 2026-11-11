@@ -29,12 +29,14 @@ describe('PaginaActivarCuenta', () => {
 
   afterEach(() => http?.verify());
 
-  it('muestra "Enlace inválido" si no hay token en la URL', async () => {
+  it('muestra la pantalla de enlace inválido si no hay token en la URL', async () => {
     const fixture = crearFixture(null);
     http = TestBed.inject(HttpTestingController);
     await fixture.whenStable();
 
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Enlace inválido');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Este enlace ya no funciona',
+    );
   });
 
   it('activa la cuenta con contraseñas válidas y coincidentes', async () => {
@@ -77,7 +79,7 @@ describe('PaginaActivarCuenta', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('no coinciden');
   });
 
-  it('muestra el mensaje de error del backend si el token venció o ya se usó', async () => {
+  it('muestra la pantalla compartida de enlace inválido si el token venció o ya se usó', async () => {
     const fixture = crearFixture('token-abc');
     http = TestBed.inject(HttpTestingController);
     await fixture.whenStable();
@@ -96,7 +98,7 @@ describe('PaginaActivarCuenta', () => {
     await fixture.whenStable();
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-      'La invitación ya venció.',
+      'Este enlace ya no funciona',
     );
   });
 });

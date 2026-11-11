@@ -95,4 +95,37 @@ describe('PaginaInicioSesion', () => {
       (fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')?.textContent,
     ).toContain('Credenciales inválidas');
   });
+
+  it('muestra el enlace para recuperar la contraseña', async () => {
+    const fixture = TestBed.createComponent(PaginaInicioSesion);
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.querySelector('a[href="/recuperar"]')).not.toBeNull();
+  });
+
+  it('AC-025: muestra el mensaje de bloqueo (423) de forma distinta a credenciales inválidas', async () => {
+    const fixture = TestBed.createComponent(PaginaInicioSesion);
+    await fixture.whenStable();
+    const { identificador, contrasena, boton } = elementos(fixture);
+
+    identificador.value = 'ana@b.com';
+    identificador.dispatchEvent(new Event('input'));
+    contrasena.value = 'incorrecta';
+    contrasena.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    boton.click();
+
+    http.expectOne('/api/v1/autenticacion/iniciar-sesion').flush(
+      {
+        message:
+          'Por seguridad, el acceso está pausado. Inténtalo de nuevo más tarde o recupera tu contraseña.',
+      },
+      { status: 423, statusText: 'Locked' },
+    );
+    await fixture.whenStable();
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')?.textContent,
+    ).toContain('Por seguridad, el acceso está pausado');
+  });
 });
