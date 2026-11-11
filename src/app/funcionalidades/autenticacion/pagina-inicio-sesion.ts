@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthApi } from '../../core/auth/auth-api';
 import { AuthStore } from '../../core/auth/auth.store';
 import { Marca } from '../../compartido/ui/marca/marca';
@@ -9,7 +9,7 @@ import { Marca } from '../../compartido/ui/marca/marca';
 /** A01 · Inicio de sesión. BR-010: acepta correo o nombre de usuario. */
 @Component({
   selector: 'app-pagina-inicio-sesion',
-  imports: [ReactiveFormsModule, Marca],
+  imports: [ReactiveFormsModule, RouterLink, Marca],
   template: `
     <main class="contenedor">
       <form class="tarjeta" [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
@@ -37,6 +37,8 @@ import { Marca } from '../../compartido/ui/marca/marca';
         @if (mostrarError()) {
           <p class="error" role="alert">{{ mensajeError() }}</p>
         }
+
+        <a routerLink="/recuperar" class="enlace-recuperar">¿Olvidaste tu contraseña?</a>
 
         <button type="submit" class="boton-primario" [disabled]="formulario.invalid || enviando()">
           @if (enviando()) {
@@ -96,6 +98,13 @@ import { Marca } from '../../compartido/ui/marca/marca';
       border: 1px solid var(--color-aviso-borde);
       color: var(--color-aviso);
       font-size: var(--texto-s);
+    }
+    .enlace-recuperar {
+      align-self: flex-end;
+      font-size: var(--texto-xs);
+      font-weight: 600;
+      text-decoration: none;
+      padding: 4px 0;
     }
     .boton-primario {
       margin-top: 8px;

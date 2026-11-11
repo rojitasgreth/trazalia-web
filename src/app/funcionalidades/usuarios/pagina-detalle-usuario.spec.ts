@@ -151,6 +151,30 @@ describe('PaginaDetalleUsuario', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Cambios guardados.');
   });
 
+  it('ofrece Desbloquear solo para una cuenta BLOQUEADO, y lo ejecuta correctamente', async () => {
+    const fixture = crearFixture('u1');
+    http = TestBed.inject(HttpTestingController);
+    await fixture.whenStable();
+    http.expectOne('/api/v1/usuarios/u1').flush({ usuario: usuarioBase({ estado: 'BLOQUEADO' }) });
+    http.expectOne('/api/v1/usuarios/u1/sesiones').flush({ data: [] });
+    await fixture.whenStable();
+
+    const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(texto).toContain('Desbloquear');
+    expect(texto).not.toContain('Suspender');
+
+    (fixture.nativeElement as HTMLElement)
+      .querySelectorAll('button')
+      .forEach((boton) => boton.textContent?.trim() === 'Desbloquear' && boton.click());
+
+    http.expectOne('/api/v1/usuarios/u1/desbloquear').flush({ estado: 'ok' });
+    http.expectOne('/api/v1/usuarios/u1').flush({ usuario: usuarioBase({ estado: 'ACTIVO' }) });
+    http.expectOne('/api/v1/usuarios/u1/sesiones').flush({ data: [] });
+    await fixture.whenStable();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Usuario desbloqueado.');
+  });
+
   it('cerrar una sesión llama a la API y recarga las sesiones', async () => {
     const fixture = crearFixture('u1');
     http = TestBed.inject(HttpTestingController);

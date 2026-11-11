@@ -20,6 +20,18 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'recuperar',
+    canActivate: [invitadoGuard],
+    loadComponent: () =>
+      import('./funcionalidades/autenticacion/pagina-recuperar').then((m) => m.PaginaRecuperar),
+  },
+  {
+    path: 'restablecer-contrasena',
+    canActivate: [invitadoGuard],
+    loadComponent: () =>
+      import('./funcionalidades/autenticacion/pagina-restablecer').then((m) => m.PaginaRestablecer),
+  },
+  {
     path: '',
     canActivate: [authGuard],
     loadComponent: () =>

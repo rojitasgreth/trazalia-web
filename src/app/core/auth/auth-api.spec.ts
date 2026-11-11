@@ -58,4 +58,19 @@ describe('AuthApi', () => {
     expect(peticion.request.method).toBe('POST');
     peticion.flush({ estado: 'activada' });
   });
+
+  it('solicitarRecuperacion envía el correo al endpoint de recuperación', () => {
+    api.solicitarRecuperacion('ana@b.com').subscribe();
+    const peticion = http.expectOne('/api/v1/autenticacion/contrasena/recuperar');
+    expect(peticion.request.method).toBe('POST');
+    expect(peticion.request.body).toEqual({ correo: 'ana@b.com' });
+    peticion.flush({ estado: 'ok' });
+  });
+
+  it('restablecerContrasena llama al endpoint de restablecimiento', () => {
+    api.restablecerContrasena({ token: 't', contrasena: 'c' }).subscribe();
+    const peticion = http.expectOne('/api/v1/autenticacion/contrasena/restablecer');
+    expect(peticion.request.method).toBe('POST');
+    peticion.flush({ estado: 'ok' });
+  });
 });

@@ -84,8 +84,10 @@ test('activar-cuenta: crea la contraseña y lleva a iniciar sesión', async ({ p
   await expect(page.getByRole('heading', { name: 'Cuenta activada' })).toBeVisible();
 });
 
-test('activar-cuenta: sin token en la URL muestra "Enlace inválido"', async ({ page }) => {
+test('activar-cuenta: sin token en la URL muestra la pantalla de enlace inválido', async ({
+  page,
+}) => {
   await page.goto('/activar-cuenta');
 
-  await expect(page.getByRole('heading', { name: 'Enlace inválido' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Este enlace ya no funciona' })).toBeVisible();
 });

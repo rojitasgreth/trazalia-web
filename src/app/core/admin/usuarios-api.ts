@@ -57,6 +57,10 @@ export class UsuariosApi {
     return this.http.post<{ estado: 'ok' }>(`${RUTA}/${idUsuario}/reenviar-invitacion`, {});
   }
 
+  desbloquear(idUsuario: string): Observable<{ estado: 'ok' }> {
+    return this.http.post<{ estado: 'ok' }>(`${RUTA}/${idUsuario}/desbloquear`, {});
+  }
+
   sesiones(idUsuario: string): Observable<{ data: SesionPropia[] }> {
     return this.http.get<{ data: SesionPropia[] }>(`${RUTA}/${idUsuario}/sesiones`);
   }

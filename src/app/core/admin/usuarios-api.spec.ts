@@ -58,13 +58,20 @@ describe('UsuariosApi', () => {
     peticion.flush({ usuario: {} });
   });
 
-  it('suspender/reactivar/inactivar/reenviarInvitacion son POST a su ruta de acción', () => {
+  it('suspender/reactivar/inactivar/reenviarInvitacion/desbloquear son POST a su ruta de acción', () => {
     api.suspender('u1').subscribe();
     api.reactivar('u1').subscribe();
     api.inactivar('u1').subscribe();
     api.reenviarInvitacion('u1').subscribe();
+    api.desbloquear('u1').subscribe();
 
-    for (const accion of ['suspender', 'reactivar', 'inactivar', 'reenviar-invitacion']) {
+    for (const accion of [
+      'suspender',
+      'reactivar',
+      'inactivar',
+      'reenviar-invitacion',
+      'desbloquear',
+    ]) {
       const peticion = http.expectOne(`/api/v1/usuarios/u1/${accion}`);
       expect(peticion.request.method).toBe('POST');
       peticion.flush({ estado: 'ok' });

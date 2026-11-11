@@ -15,6 +15,11 @@ export interface AceptarInvitacionPayload {
   contrasena: string;
 }
 
+export interface RestablecerContrasenaPayload {
+  token: string;
+  contrasena: string;
+}
+
 @Service()
 export class AuthApi {
   private readonly http = inject(HttpClient);
@@ -54,5 +59,13 @@ export class AuthApi {
 
   aceptarInvitacion(datos: AceptarInvitacionPayload): Observable<{ estado: 'activada' }> {
     return this.http.post<{ estado: 'activada' }>(`${RUTA}/invitaciones/aceptar`, datos);
+  }
+
+  solicitarRecuperacion(correo: string): Observable<{ estado: 'ok' }> {
+    return this.http.post<{ estado: 'ok' }>(`${RUTA}/contrasena/recuperar`, { correo });
+  }
+
+  restablecerContrasena(datos: RestablecerContrasenaPayload): Observable<{ estado: 'ok' }> {
+    return this.http.post<{ estado: 'ok' }>(`${RUTA}/contrasena/restablecer`, datos);
   }
 }
