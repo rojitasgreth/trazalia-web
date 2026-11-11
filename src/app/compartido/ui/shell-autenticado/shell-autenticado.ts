@@ -7,8 +7,10 @@ import { Marca } from '../marca/marca';
 import { ModalInactividad } from '../modal-inactividad/modal-inactividad';
 
 /**
- * Layout común a toda página autenticada: cabecera, navegación, aviso de
- * inactividad (BR-022/023) y el <router-outlet> de la zona privada.
+ * Layout común a toda página autenticada: barra lateral de navegación (A13/
+ * A14/A15, diseño real del prototipo), encabezado con identidad y cerrar
+ * sesión, aviso de inactividad (BR-022/023) y el <router-outlet> de la zona
+ * privada.
  */
 @Component({
   selector: 'app-shell-autenticado',
@@ -19,25 +21,30 @@ import { ModalInactividad } from '../modal-inactividad/modal-inactividad';
   },
   template: `
     <div class="pagina">
-      <header class="encabezado">
-        <app-marca />
-        <nav class="navegacion" aria-label="Principal">
-          <a routerLink="/" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: true }"
-            >Inicio</a
-          >
-          @if (usuario()?.rol === 'ADMINISTRADOR') {
-            <a routerLink="/usuarios" routerLinkActive="activo">Usuarios</a>
-          }
-        </nav>
-        <div class="usuario">
+      <nav class="barra-lateral" aria-label="Administración">
+        <div class="marca-lateral">
+          <app-marca />
+        </div>
+        <a routerLink="/" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: true }"
+          >Inicio</a
+        >
+        @if (usuario()?.rol === 'ADMINISTRADOR') {
+          <a routerLink="/usuarios" routerLinkActive="activo">Usuarios</a>
+          <a routerLink="/auditoria" routerLinkActive="activo">Auditoría</a>
+        }
+        <a routerLink="/mi-cuenta" routerLinkActive="activo">Mi cuenta</a>
+      </nav>
+
+      <div class="area-principal">
+        <header class="encabezado">
           <span>{{ usuario()?.nombre }} {{ usuario()?.apellido }}</span>
           <button type="button" class="boton-enlace" (click)="cerrarSesion()">Cerrar sesión</button>
-        </div>
-      </header>
+        </header>
 
-      <main class="contenido">
-        <router-outlet />
-      </main>
+        <main class="contenido">
+          <router-outlet />
+        </main>
+      </div>
     </div>
 
     <app-modal-inactividad
@@ -50,40 +57,54 @@ import { ModalInactividad } from '../modal-inactividad/modal-inactividad';
   styles: `
     .pagina {
       display: flex;
-      flex-direction: column;
+      flex-wrap: wrap;
       min-height: 100dvh;
+    }
+    .barra-lateral {
+      flex: 1 1 220px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 24px 16px;
+      background: #15201b;
+      color: #ffffff;
+    }
+    .marca-lateral {
+      padding: 0 8px 20px;
+    }
+    .barra-lateral a {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      border-radius: 10px;
+      color: #c9d2ce;
+      text-decoration: none;
+      font-size: var(--texto-m);
+    }
+    .barra-lateral a:hover {
+      color: #ffffff;
+    }
+    .barra-lateral a.activo {
+      background: #2a3631;
+      color: #ffffff;
+      font-weight: 600;
+    }
+    .area-principal {
+      flex: 999 1 560px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
     }
     .encabezado {
       display: flex;
       align-items: center;
-      gap: 24px;
+      justify-content: flex-end;
+      gap: 12px;
       padding: 16px 24px;
       border-bottom: 1px solid var(--color-borde-suave);
       background: var(--color-superficie);
-    }
-    .navegacion {
-      display: flex;
-      gap: 16px;
-      flex: 1;
-    }
-    .navegacion a {
-      color: var(--color-texto-medio);
-      font-weight: 600;
-      text-decoration: none;
-      padding: 6px 2px;
-      border-bottom: 2px solid transparent;
-    }
-    .navegacion a:hover {
-      color: var(--color-primario);
-    }
-    .navegacion a.activo {
-      color: var(--color-primario);
-      border-bottom-color: var(--color-primario);
-    }
-    .usuario {
-      display: flex;
-      align-items: center;
-      gap: 12px;
       font-size: var(--texto-s);
       color: var(--color-texto-medio);
     }
@@ -101,6 +122,7 @@ import { ModalInactividad } from '../modal-inactividad/modal-inactividad';
     }
     .contenido {
       flex: 1;
+      background: var(--color-fondo);
     }
   `,
 })

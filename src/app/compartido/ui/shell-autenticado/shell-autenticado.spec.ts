@@ -37,7 +37,7 @@ describe('ShellAutenticado', () => {
 
   afterEach(() => http.verify());
 
-  it('muestra el nombre del usuario y oculta el enlace de administración a un fisioterapeuta', async () => {
+  it('muestra el nombre del usuario, "Mi cuenta" y oculta Usuarios/Auditoría a un fisioterapeuta', async () => {
     authStore.establecer(FISIO);
     const fixture = TestBed.createComponent(ShellAutenticado);
     await fixture.whenStable();
@@ -45,14 +45,17 @@ describe('ShellAutenticado', () => {
     const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(texto).toContain('Ana');
     expect(fixture.nativeElement.querySelector('a[href="/usuarios"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href="/auditoria"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href="/mi-cuenta"]')).not.toBeNull();
   });
 
-  it('muestra el enlace de administración a un administrador', async () => {
+  it('muestra los enlaces de administración (Usuarios y Auditoría) a un administrador', async () => {
     authStore.establecer(ADMIN);
     const fixture = TestBed.createComponent(ShellAutenticado);
     await fixture.whenStable();
 
     expect(fixture.nativeElement.querySelector('a[href="/usuarios"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href="/auditoria"]')).not.toBeNull();
   });
 
   it('cerrar sesión llama al backend, limpia el estado y navega a iniciar-sesion', async () => {
