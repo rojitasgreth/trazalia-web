@@ -40,7 +40,9 @@ test('restablecer: un token vencido o usado muestra la pantalla de enlace invál
   await expect(page.getByRole('heading', { name: 'Este enlace ya no funciona' })).toBeVisible();
 });
 
-test('restablecer: sin token en la URL muestra directamente el enlace inválido', async ({ page }) => {
+test('restablecer: sin token en la URL muestra directamente el enlace inválido', async ({
+  page,
+}) => {
   await page.goto('/restablecer-contrasena');
 
   await expect(page.getByRole('heading', { name: 'Este enlace ya no funciona' })).toBeVisible();
