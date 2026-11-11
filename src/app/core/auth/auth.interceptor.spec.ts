@@ -65,6 +65,26 @@ describe('authInterceptor', () => {
     expect(navegar).toHaveBeenCalledWith(['/iniciar-sesion']);
   });
 
+  it('ante un 401 en /autenticacion/yo sin renovación posible, no fuerza una navegación', async () => {
+    configurar();
+    const http = TestBed.inject(HttpClient);
+    const backend = TestBed.inject(HttpTestingController);
+    const router = TestBed.inject(Router);
+    const navegar = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const promesa = firstValueFrom(http.get('/api/v1/autenticacion/yo'));
+
+    backend
+      .expectOne('/api/v1/autenticacion/yo')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend
+      .expectOne('/api/v1/autenticacion/renovar')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    await expect(promesa).rejects.toBeTruthy();
+    expect(navegar).not.toHaveBeenCalled();
+  });
+
   it('no intenta renovar ante un 401 en la propia ruta de login', async () => {
     configurar();
     const http = TestBed.inject(HttpClient);
