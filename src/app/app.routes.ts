@@ -66,6 +66,17 @@ export const routes: Routes = [
             (m) => m.PaginaDetalleUsuario,
           ),
       },
+      {
+        path: 'auditoria',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./funcionalidades/auditoria/pagina-auditoria').then((m) => m.PaginaAuditoria),
+      },
+      {
+        path: 'mi-cuenta',
+        loadComponent: () =>
+          import('./funcionalidades/mi-cuenta/pagina-mi-cuenta').then((m) => m.PaginaMiCuenta),
+      },
     ],
   },
   { path: '**', redirectTo: '' },
