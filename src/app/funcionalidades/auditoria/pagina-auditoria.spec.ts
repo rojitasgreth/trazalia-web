@@ -30,6 +30,8 @@ describe('PaginaAuditoria', () => {
             idEvento: 'e1',
             idUsuarioActor: 'abcdefgh-1111-2222-3333-444444444444',
             idUsuarioAfectado: null,
+            nombreActor: 'Ana Pérez',
+            nombreAfectado: null,
             tipoEvento: 'inicio_sesion',
             resultado: 'EXITOSO',
             metadatosMinimos: null,
@@ -45,6 +47,7 @@ describe('PaginaAuditoria', () => {
     const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(texto).toContain('inicio_sesion');
     expect(texto).toContain('Exitoso');
+    expect(texto).toContain('Ana Pérez');
   });
 
   it('muestra un mensaje de error si la carga falla', async () => {
