@@ -101,8 +101,8 @@ const ETIQUETAS_RESULTADO: Record<string, string> = {
                 <tr>
                   <td>{{ evento.fechaEvento | date: 'short' }}</td>
                   <td>{{ evento.tipoEvento }}</td>
-                  <td>{{ truncarId(evento.idUsuarioActor) }}</td>
-                  <td>{{ truncarId(evento.idUsuarioAfectado) }}</td>
+                  <td>{{ evento.nombreActor ?? '—' }}</td>
+                  <td>{{ evento.nombreAfectado ?? '—' }}</td>
                   <td>
                     <span class="insignia" [attr.data-resultado]="evento.resultado">
                       {{ etiquetaResultado(evento.resultado) }}
@@ -297,10 +297,6 @@ export class PaginaAuditoria {
 
   protected etiquetaResultado(resultado: string): string {
     return ETIQUETAS_RESULTADO[resultado] ?? resultado;
-  }
-
-  protected truncarId(id: string | null): string {
-    return id ? id.slice(0, 8) : '—';
   }
 
   protected detalle(evento: EventoAuditoria): string {
