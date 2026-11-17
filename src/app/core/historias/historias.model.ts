@@ -65,6 +65,7 @@ export interface HistoriaDelPaciente {
   tipo: TipoHistoria;
   estado: EstadoHistoria;
   archivada: boolean;
+  sinDocumento: boolean;
 }
 
 export interface HistoriaDetalle extends HistoriaResumen {
@@ -132,3 +133,11 @@ export type ResultadoCoincidencia =
   | { resultado: 'ninguna' }
   | { resultado: 'duplicado'; historia: HistoriaResumen }
   | { resultado: 'autocompletar'; historia: HistoriaResumen; datos: DatosPersonales };
+
+/** PATCH /historias/:id (B16–B18). */
+export type ActualizarHistoriaPayload = Partial<DatosPersonales> &
+  Pick<DatosPersonales, 'nombre' | 'apellido'> & {
+    representante?: DatosRepresentante | null;
+    /** RF-014: aplicar los cambios compartidos a las demás historias no archivadas. */
+    propagar: boolean;
+  };

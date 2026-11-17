@@ -271,3 +271,45 @@ test('B14/B15: autocompleta una historia de Neurología con los datos de Traumat
   await page.locator('#ocupacion').fill('Contador público');
   await expect(page.locator('#ocupacion')).toHaveValue('Contador público');
 });
+
+test('B16/B17: edita el teléfono y lo aplica también a la otra historia del paciente', async ({
+  page,
+}) => {
+  await iniciarSesionComo(page, FISIO);
+  const conOtra = {
+    ...DETALLE,
+    otrasHistorias: [
+      {
+        idHistoria: '6f1c0b44-0000-4000-8000-000000000002',
+        tipo: 'NEURO_ADULTO',
+        estado: 'BORRADOR',
+        archivada: false,
+        sinDocumento: false,
+      },
+    ],
+  };
+  let cuerpo: Record<string, unknown> | undefined;
+  await page.route(`**/api/v1/historias/${RESUMEN.idHistoria}`, async (ruta) => {
+    if (ruta.request().method() === 'PATCH') {
+      cuerpo = ruta.request().postDataJSON() as Record<string, unknown>;
+    }
+    await ruta.fulfill({ json: { historia: conOtra } });
+  });
+
+  await page.goto(`/historias/${RESUMEN.idHistoria}`);
+  await page.getByRole('link', { name: 'Editar datos personales' }).click();
+  await expect(page.getByRole('heading', { name: 'Editar datos personales' })).toBeVisible();
+  await expect(page.getByText('Estás editando datos personales')).toBeVisible();
+
+  await page.locator('#telefono').fill('0424-555-8890');
+  await expect(page.getByText('Antes: 0412-555-0134')).toBeVisible();
+  await page.getByRole('button', { name: 'Guardar cambios' }).click();
+
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo).toContainText('¿Actualizar también su otra historia?');
+  await dialogo.getByRole('button', { name: 'Actualizar ambas' }).click();
+
+  await expect(page).toHaveURL(new RegExp(`/historias/${RESUMEN.idHistoria}$`));
+  await expect(page.getByText('Cambios guardados.')).toBeVisible();
+  expect(cuerpo).toMatchObject({ telefono: '0424-555-8890', propagar: true });
+});
