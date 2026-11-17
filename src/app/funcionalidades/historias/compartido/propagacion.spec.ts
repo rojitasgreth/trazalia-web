@@ -25,6 +25,8 @@ const ANTES: DatosPersonales = {
   contactoTelefono: null,
   demandasFisicas: 'Oficina',
   fuenteInformacion: [],
+  modalidad: null,
+  idCentro: null,
 };
 
 describe('cambios compartidos (SPEC §10.2)', () => {

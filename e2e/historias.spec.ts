@@ -54,6 +54,8 @@ const DETALLE = {
     contactoTelefono: null,
     demandasFisicas: null,
     fuenteInformacion: [],
+    modalidad: null,
+    idCentro: null,
   },
   representante: null,
   camposFaltantes: [
@@ -66,6 +68,7 @@ const DETALLE = {
   ],
   puedeIniciarValoracion: false,
   tieneRegistrosClinicos: false,
+  centro: null,
   otrasHistorias: [],
 };
 
@@ -76,6 +79,11 @@ async function iniciarSesionComo(page: Page, usuario: typeof FISIO) {
   );
   await page.route('**/api/v1/autenticacion/actividad', (ruta) =>
     ruta.fulfill({ json: { estado: 'ok' } }),
+  );
+  // El formulario consulta coincidencias al salir de un campo (B13/B14); sin
+  // simularla la petición llegaría a la API real, si hay una levantada.
+  await page.route('**/api/v1/historias/coincidencias', (ruta) =>
+    ruta.fulfill({ json: { resultado: 'ninguna' } }),
   );
 }
 
@@ -356,4 +364,79 @@ test('B26/B27: con registros clínicos no se elimina; se archiva', async ({ page
   await dialogo.getByRole('button', { name: 'Archivar historia' }).click();
 
   await expect(page).toHaveURL(/\/historias\?vista=archivadas$/);
+});
+
+const SANTA_SOFIA = {
+  idCentro: '7d1c5e2a-0000-4000-8000-0000000000c1',
+  nombre: 'Clínica Santa Sofía',
+  estado: 'Miranda',
+  municipio: 'Sucre',
+  parroquia: 'Petare',
+  comunidad: null,
+};
+
+async function prepararCreacion(page: Page) {
+  await iniciarSesionComo(page, FISIO);
+  let cuerpo: Record<string, unknown> | undefined;
+  await page.route('**/api/v1/historias', async (ruta) => {
+    if (ruta.request().method() !== 'POST') return ruta.fallback();
+    cuerpo = ruta.request().postDataJSON() as Record<string, unknown>;
+    await ruta.fulfill({ status: 201, json: { historia: DETALLE } });
+  });
+  await page.route(`**/api/v1/historias/${RESUMEN.idHistoria}`, (ruta) =>
+    ruta.fulfill({ json: { historia: DETALLE } }),
+  );
+  await page.goto('/historias/nueva/NEURO_ADULTO');
+  await page.locator('#nombre').fill('Carlos');
+  await page.locator('#apellido').fill('Andrade');
+  await page.locator('#nacionalidad').selectOption('V');
+  await page.locator('#cedula').fill('15482301');
+  return () => cuerpo;
+}
+
+test('v1.4 B29: atiende en un centro médico elegido en el buscador', async ({ page }) => {
+  const cuerpo = await prepararCreacion(page);
+  await page.route('**/api/v1/centros?*', (ruta) =>
+    ruta.fulfill({ json: { datos: [SANTA_SOFIA] } }),
+  );
+
+  await page.getByText('Centro médico', { exact: true }).click();
+  await page.locator('#centro').fill('santa');
+  await page.getByRole('option', { name: /Clínica Santa Sofía/ }).click();
+  await expect(page.getByText('Petare, Sucre, Miranda')).toBeVisible();
+  await page.getByRole('button', { name: 'Guardar borrador' }).click();
+
+  await expect(page).toHaveURL(new RegExp(`/historias/${RESUMEN.idHistoria}$`));
+  expect(cuerpo()).toMatchObject({ modalidad: 'CENTRO', idCentro: SANTA_SOFIA.idCentro });
+});
+
+test('v1.4 B30/B31: registra un centro nuevo cuando no existe', async ({ page }) => {
+  const cuerpo = await prepararCreacion(page);
+  let nuevo: Record<string, unknown> | undefined;
+  await page.route('**/api/v1/centros?*', (ruta) => ruta.fulfill({ json: { datos: [] } }));
+  await page.route('**/api/v1/centros', async (ruta) => {
+    nuevo = ruta.request().postDataJSON() as Record<string, unknown>;
+    await ruta.fulfill({
+      status: 201,
+      json: { centro: { ...SANTA_SOFIA, nombre: 'Centro Médico Lara' } },
+    });
+  });
+
+  await page.getByText('Centro médico', { exact: true }).click();
+  await page.locator('#centro').fill('Centro Médico Lara');
+  await page.getByRole('option', { name: /Agregar «Centro Médico Lara»/ }).click();
+
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo).toContainText('Nuevo centro médico');
+  await expect(dialogo.locator('#centro-nombre')).toHaveValue('Centro Médico Lara');
+  await dialogo.locator('#centro-estado').selectOption('Lara');
+  await dialogo.locator('#centro-municipio').fill('Iribarren');
+  await dialogo.locator('#centro-parroquia').fill('Catedral');
+  await dialogo.getByRole('button', { name: 'Agregar centro' }).click();
+
+  await expect(page.getByText('Centro Médico Lara')).toBeVisible();
+  expect(nuevo).toMatchObject({ nombre: 'Centro Médico Lara', dirEstado: 'Lara' });
+  await page.getByRole('button', { name: 'Guardar borrador' }).click();
+  await expect(page).toHaveURL(new RegExp(`/historias/${RESUMEN.idHistoria}$`));
+  expect(cuerpo()).toMatchObject({ modalidad: 'CENTRO', idCentro: SANTA_SOFIA.idCentro });
 });

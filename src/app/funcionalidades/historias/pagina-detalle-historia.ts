@@ -12,6 +12,7 @@ import type {
 import { DialogoGestion, type AccionGestion } from './compartido/dialogo-gestion';
 import {
   CAMPOS_REPRESENTANTE,
+  MODALIDADES,
   PARENTESCOS,
   SEXOS,
   resumirFaltantes,
@@ -324,7 +325,11 @@ export class PaginaDetalleHistoria {
 
   protected readonly razones = computed(() =>
     this.historia.hasValue()
-      ? resumirFaltantes(this.historia.value().tipo, this.historia.value().camposFaltantes)
+      ? resumirFaltantes(
+          this.historia.value().tipo,
+          this.historia.value().camposFaltantes,
+          this.historia.value().datos.modalidad,
+        )
       : [],
   );
 
@@ -408,7 +413,7 @@ export class PaginaDetalleHistoria {
   }
 
   private gruposPersonales(h: HistoriaDetalle, faltantes: Set<string>): Grupo[] {
-    return seccionesDe(h.tipo).map((seccion) => {
+    return seccionesDe(h.tipo, h.datos.modalidad).map((seccion) => {
       const datos = seccion.campos
         .filter((c) => !CAMPOS_EN_CABECERA.has(c.clave))
         .map((c) => this.dato(h, c, faltantes));
@@ -441,6 +446,13 @@ export class PaginaDetalleHistoria {
         return SEXOS.find((s) => s.valor === d.sexo)?.etiqueta ?? '';
       case 'fuenteInformacion':
         return d.fuenteInformacion.join(', ');
+      // v1.4 §8.6/§8.7 (anexo B32).
+      case 'modalidad':
+        return MODALIDADES.find((m) => m.valor === d.modalidad)?.etiqueta ?? '';
+      case 'idCentro':
+        return h.centro
+          ? `${h.centro.nombre} · ${h.centro.parroquia}, ${h.centro.municipio}, ${h.centro.estado}`
+          : '';
       default:
         return d[campo.clave] ?? '';
     }

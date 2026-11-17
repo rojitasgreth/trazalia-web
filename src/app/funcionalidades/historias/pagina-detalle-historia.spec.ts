@@ -50,11 +50,14 @@ function neuroCarlos(cambios: Partial<HistoriaDetalle> = {}): HistoriaDetalle {
       contactoTelefono: '0414-555-2290',
       demandasFisicas: null,
       fuenteInformacion: [],
+      modalidad: null,
+      idCentro: null,
     },
     representante: null,
     camposFaltantes: ['fuenteInformacion', 'nivelEducativo'],
     puedeIniciarValoracion: false,
     tieneRegistrosClinicos: false,
+    centro: null,
     otrasHistorias: [
       {
         idHistoria: 'h2',
@@ -62,6 +65,7 @@ function neuroCarlos(cambios: Partial<HistoriaDetalle> = {}): HistoriaDetalle {
         estado: 'ACTIVA',
         archivada: false,
         sinDocumento: false,
+        modalidad: null,
       },
     ],
     ...cambios,
@@ -320,5 +324,27 @@ describe('PaginaDetalleHistoria', () => {
 
     expect(elemento.textContent).not.toContain('Historia archivada el');
     expect(elemento.querySelector('.acciones a')?.textContent).toContain('Editar datos personales');
+  });
+
+  it('v1.4 B32: muestra la modalidad y el centro de atención', async () => {
+    const base = neuroCarlos();
+    const elemento = await abrir({
+      ...base,
+      datos: { ...base.datos, modalidad: 'CENTRO', idCentro: 'c1' },
+      centro: {
+        idCentro: 'c1',
+        nombre: 'Clínica Santa Sofía',
+        estado: 'Miranda',
+        municipio: 'Sucre',
+        parroquia: 'Petare',
+        comunidad: null,
+      },
+    });
+
+    const grupo = Array.from(elemento.querySelectorAll('.grupo')).find((g) =>
+      g.querySelector('h2')?.textContent?.includes('Modalidad de atención'),
+    )!;
+    expect(grupo.textContent).toContain('Centro médico');
+    expect(grupo.textContent).toContain('Clínica Santa Sofía · Petare, Sucre, Miranda');
   });
 });

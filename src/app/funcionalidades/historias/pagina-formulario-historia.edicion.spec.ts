@@ -47,11 +47,14 @@ function trauma(cambios: Partial<HistoriaDetalle> = {}): HistoriaDetalle {
       contactoTelefono: '0414-555-2290',
       demandasFisicas: 'Oficina',
       fuenteInformacion: [],
+      modalidad: null,
+      idCentro: null,
     },
     representante: null,
     camposFaltantes: [],
     puedeIniciarValoracion: false,
     tieneRegistrosClinicos: false,
+    centro: null,
     otrasHistorias: [
       {
         idHistoria: 'h2',
@@ -59,6 +62,7 @@ function trauma(cambios: Partial<HistoriaDetalle> = {}): HistoriaDetalle {
         estado: 'BORRADOR',
         archivada: false,
         sinDocumento: false,
+        modalidad: null,
       },
       {
         idHistoria: 'h3',
@@ -66,6 +70,7 @@ function trauma(cambios: Partial<HistoriaDetalle> = {}): HistoriaDetalle {
         estado: 'ACTIVA',
         archivada: true,
         sinDocumento: false,
+        modalidad: null,
       },
     ],
     ...cambios,

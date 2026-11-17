@@ -73,7 +73,7 @@ describe('PaginaFormularioHistoria', () => {
     expect(texto).toContain('Contacto de emergencia');
     expect(texto).toContain('Demandas físicas');
     expect(texto).toContain('Cédula (V o E + número)');
-    expect(texto).toContain('0 de 10');
+    expect(texto).toContain('0 de 11');
     // RF-025: en adultos no existe "Sin documento".
     expect(texto).not.toContain('Sin documento');
   });
@@ -106,7 +106,7 @@ describe('PaginaFormularioHistoria', () => {
     });
 
     expect((elemento().querySelector('#edad') as HTMLInputElement).value).toMatch(/^\d+ años$/);
-    expect(elemento().textContent).toContain('3 de 10');
+    expect(elemento().textContent).toContain('3 de 11');
 
     await enviar();
     const peticion = http.expectOne('/api/v1/historias');
@@ -247,7 +247,7 @@ describe('PaginaFormularioHistoria', () => {
     expect(titulos[0]).toBe('Representante');
     expect(titulos[1]).toBe('Niño o niña');
     expect(elemento().textContent).toContain('Puedes guardar sin representante');
-    expect(elemento().textContent).toContain('0 de 16');
+    expect(elemento().textContent).toContain('0 de 17');
 
     // RF-004: sin documento exige la fecha de nacimiento.
     rellenar(pagina, { nombre: 'Sofía', apellido: 'Martínez', sinDocumento: true });
@@ -362,6 +362,8 @@ describe('PaginaFormularioHistoria', () => {
         contactoTelefono: '0414-555-2290',
         demandasFisicas: null,
         fuenteInformacion: [],
+        modalidad: null,
+        idCentro: null,
       },
     });
     await harness.fixture.whenStable();
@@ -430,5 +432,88 @@ describe('PaginaFormularioHistoria', () => {
 
     expect(elemento().querySelector('[role="dialog"]')).toBeNull();
     expect((elemento().querySelector('#nombre') as HTMLInputElement).value).toBe('');
+  });
+
+  it('v1.4 B28: a domicilio, Traumatología pide la dirección del paciente', async () => {
+    const pagina = await abrir();
+    const titulos = () =>
+      Array.from(elemento().querySelectorAll('.seccion h2')).map((h) => h.textContent?.trim());
+    expect(titulos()[1]).toBe('Modalidad de atención');
+    expect(titulos()).not.toContain('Dirección del paciente');
+
+    rellenar(pagina, {
+      nombre: 'Carlos',
+      apellido: 'Andrade',
+      nacionalidad: 'V',
+      cedula: '15482301',
+      modalidad: 'DOMICILIO',
+      dirEstado: 'Miranda',
+    });
+    expect(titulos()[2]).toBe('Dirección del paciente');
+    expect(elemento().textContent).toContain('Registra abajo la dirección del paciente.');
+
+    await enviar();
+    const peticion = http.expectOne('/api/v1/historias');
+    expect(peticion.request.body).toMatchObject({
+      modalidad: 'DOMICILIO',
+      idCentro: null,
+      dirEstado: 'Miranda',
+    });
+    peticion.flush({ historia: { idHistoria: 'h7' } });
+  });
+
+  it('v1.4 B29: en centro médico busca y envía el centro elegido', async () => {
+    const pagina = await abrir('NEURO_ADULTO');
+    rellenar(pagina, {
+      nombre: 'Carlos',
+      apellido: 'Andrade',
+      nacionalidad: 'V',
+      cedula: '15482301',
+      modalidad: 'CENTRO',
+    });
+    expect(elemento().querySelector('app-buscador-centro')).not.toBeNull();
+    (pagina as unknown as { elegirCentro(c: object): void }).elegirCentro({
+      idCentro: 'c1',
+      nombre: 'Clínica Santa Sofía',
+      estado: 'Miranda',
+      municipio: 'Sucre',
+      parroquia: 'Petare',
+      comunidad: null,
+    });
+    harness.fixture.detectChanges();
+    expect(elemento().textContent).toContain('Clínica Santa Sofía');
+
+    await enviar();
+    const peticion = http.expectOne('/api/v1/historias');
+    expect(peticion.request.body).toMatchObject({ modalidad: 'CENTRO', idCentro: 'c1' });
+    expect(peticion.request.body).not.toHaveProperty('dirEstado');
+    peticion.flush({ historia: { idHistoria: 'h8' } });
+  });
+
+  it('muestra el error del backend si el centro no existe', async () => {
+    const pagina = await abrir();
+    rellenar(pagina, {
+      nombre: 'Carlos',
+      apellido: 'Andrade',
+      nacionalidad: 'V',
+      cedula: '15482301',
+      modalidad: 'CENTRO',
+      idCentro: 'c-borrado',
+    });
+
+    await enviar();
+    http.expectOne('/api/v1/historias').flush(
+      {
+        mensaje: 'El centro médico seleccionado no existe.',
+        errores: [{ campo: 'centro', mensaje: 'El centro médico seleccionado no existe.' }],
+      },
+      { status: 400, statusText: 'Bad Request' },
+    );
+    await harness.fixture.whenStable();
+    harness.fixture.detectChanges();
+
+    expect(elemento().querySelector('#centro-msg')?.textContent).toContain(
+      'El centro médico seleccionado no existe.',
+    );
   });
 });
