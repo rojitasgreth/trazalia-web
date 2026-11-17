@@ -32,47 +32,6 @@ h1 {
   margin: 0;
   color: var(--color-texto-secundario);
 }
-.banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 14px;
-}
-.banner--aviso {
-  border: 1px solid var(--color-aviso-borde);
-  background: var(--color-aviso-fondo);
-  color: var(--color-aviso-intenso);
-}
-.banner--error {
-  border: 1px solid var(--color-peligro-borde);
-  background: var(--color-peligro-fondo);
-  color: var(--color-peligro);
-}
-.banner-texto {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 220px;
-  font-size: var(--texto-s);
-  line-height: 1.5;
-}
-.banner-texto strong {
-  font-size: var(--texto-m);
-}
-.banner-boton {
-  height: 40px;
-  padding: 0 16px;
-  border: 1.5px solid var(--color-peligro);
-  border-radius: var(--radio-control);
-  background: var(--color-superficie);
-  color: var(--color-peligro);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
 .cuerpo {
   display: flex;
   flex-wrap: wrap;
@@ -373,11 +332,6 @@ input:disabled {
     justify-content: center;
   }
 }
-.banner--info {
-  border: 1px solid var(--color-info-borde);
-  background: var(--color-info-fondo);
-  color: var(--color-info);
-}
 .seccion-nota--aviso {
   padding: 4px 10px;
   border-radius: var(--radio-pildora);
@@ -390,4 +344,28 @@ input:disabled {
   margin: -8px 0 0;
   color: var(--color-texto-secundario);
   font-size: var(--texto-s);
+}
+.insignia {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: var(--radio-pildora);
+  font-size: 11px;
+  font-weight: 700;
+}
+.insignia[data-insignia='Autocompletado'] {
+  background: var(--color-primario-suave);
+  color: var(--color-primario-hover);
+}
+.insignia[data-insignia='Modificado'] {
+  background: var(--color-info-fondo);
+  color: var(--color-info);
+}
+input[data-insignia='Autocompletado'],
+select[data-insignia='Autocompletado'] {
+  border-color: var(--color-autocompletado-borde);
+  background: var(--color-seleccion-fondo);
+}
+input[data-insignia='Modificado'],
+select[data-insignia='Modificado'] {
+  border: 2px solid var(--color-tipo-trauma);
 }

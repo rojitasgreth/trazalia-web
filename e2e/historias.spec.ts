@@ -238,3 +238,36 @@ test('B10: crea una historia infantil sin documento, con el representante primer
     representante: { parentesco: 'MADRE', nombre: 'Laura' },
   });
 });
+
+test('B14/B15: autocompleta una historia de Neurología con los datos de Traumatología', async ({
+  page,
+}) => {
+  await iniciarSesionComo(page, FISIO);
+  await page.route('**/api/v1/historias/coincidencias', (ruta) =>
+    ruta.fulfill({
+      json: {
+        resultado: 'autocompletar',
+        historia: RESUMEN,
+        datos: { ...DETALLE.datos, ocupacion: 'Contador', dominancia: 'Diestro(a)' },
+      },
+    }),
+  );
+
+  await page.goto('/historias/nueva/NEURO_ADULTO');
+  await page.locator('#nacionalidad').selectOption('V');
+  await page.locator('#cedula').fill('15482301');
+  await page.locator('#cedula').blur();
+
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo).toContainText('Encontramos otra historia de este paciente');
+  await dialogo.getByRole('button', { name: 'Usar estos datos' }).click();
+
+  await expect(page.locator('#nombre')).toHaveValue('Carlos');
+  await expect(page.locator('#ocupacion')).toHaveValue('Contador');
+  await expect(
+    page.getByText('Usamos los datos de su historia de Traumatología del adulto'),
+  ).toBeVisible();
+  // RF-013: los datos copiados siguen siendo editables.
+  await page.locator('#ocupacion').fill('Contador público');
+  await expect(page.locator('#ocupacion')).toHaveValue('Contador público');
+});

@@ -98,3 +98,62 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Banners de estado (B12, B15, B19…): aviso, error, info y autocompletado. */
+.hc-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+}
+.hc-banner[data-variante='aviso'] {
+  border-color: var(--color-aviso-borde);
+  background: var(--color-aviso-fondo);
+  color: var(--color-aviso-intenso);
+}
+.hc-banner[data-variante='error'] {
+  border-color: var(--color-peligro-borde);
+  background: var(--color-peligro-fondo);
+  color: var(--color-peligro);
+}
+.hc-banner[data-variante='info'] {
+  border-color: var(--color-info-borde);
+  background: var(--color-info-fondo);
+  color: var(--color-info);
+}
+.hc-banner[data-variante='auto'] {
+  border-color: var(--color-autocompletado-borde);
+  background: var(--color-primario-suave);
+  color: var(--color-primario-hover);
+}
+.hc-banner[data-variante='exito'] {
+  border-color: var(--color-exito-borde);
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+}
+.hc-banner-texto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 220px;
+  font-size: var(--texto-s);
+  line-height: 1.5;
+}
+.hc-banner-texto strong {
+  font-size: var(--texto-m);
+}
+.hc-banner-boton {
+  height: 40px;
+  padding: 0 16px;
+  border: 1.5px solid currentColor;
+  border-radius: var(--radio-control);
+  background: var(--color-superficie);
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}

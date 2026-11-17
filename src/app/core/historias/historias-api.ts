@@ -2,10 +2,12 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import type {
+  ConsultaCoincidencias,
   CrearHistoriaPayload,
   FiltrosHistorias,
   HistoriaDetalle,
   PaginaHistorias,
+  ResultadoCoincidencia,
 } from './historias.model';
 
 const RUTA = '/api/v1/historias';
@@ -30,5 +32,9 @@ export class HistoriasApi {
 
   crear(datos: CrearHistoriaPayload): Observable<{ historia: HistoriaDetalle }> {
     return this.http.post<{ historia: HistoriaDetalle }>(RUTA, datos);
+  }
+
+  coincidencias(consulta: ConsultaCoincidencias): Observable<ResultadoCoincidencia> {
+    return this.http.post<ResultadoCoincidencia>(`${RUTA}/coincidencias`, consulta);
   }
 }
