@@ -3,6 +3,7 @@
 @import '@fontsource/figtree/500.css';
 @import '@fontsource/figtree/600.css';
 @import '@fontsource/figtree/700.css';
+@import './app/funcionalidades/historias/compartido/historias.css';
 
 :root {
   --fuente: 'Figtree', system-ui, sans-serif;
@@ -31,6 +32,23 @@
   --color-info: #16337a;
   --color-info-fondo: #e6edfb;
   --color-info-borde: #c7d5f5;
+
+  /* Módulo B (prototipo docs/docs/moduloB). */
+  --color-aviso-intenso: #7a3606;
+  --color-borde-error: #b4530a;
+  --color-peligro: #7e2410;
+  --color-peligro-fondo: #fbe9e4;
+  --color-peligro-borde: #edc2b6;
+  --color-borde-neutro: #b9c4bf;
+  --color-texto-apagado: #8a968f;
+  --color-campo-inactivo: #eef1f0;
+  --color-seleccion-fondo: #f2f8f6;
+  --color-tipo-neuro: #6b4fb8;
+  --color-tipo-neuro-fondo: #eeeaf8;
+  --color-tipo-neuro-texto: #4b3790;
+  --color-tipo-trauma: #1e50c8;
+  --color-tipo-infantil: #d9822b;
+  --color-tipo-adulto-mayor: #0e6b58;
 
   --radio-control: 10px;
   --radio-tarjeta: 12px;

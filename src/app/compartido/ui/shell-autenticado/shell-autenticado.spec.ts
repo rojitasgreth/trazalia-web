@@ -47,6 +47,8 @@ describe('ShellAutenticado', () => {
     expect(fixture.nativeElement.querySelector('a[href="/usuarios"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('a[href="/auditoria"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('a[href="/mi-cuenta"]')).not.toBeNull();
+    // RF-001: Historias clínicas solo para el fisioterapeuta.
+    expect(fixture.nativeElement.querySelector('a[href="/historias"]')).not.toBeNull();
   });
 
   it('muestra los enlaces de administración (Usuarios y Auditoría) a un administrador', async () => {
@@ -56,6 +58,7 @@ describe('ShellAutenticado', () => {
 
     expect(fixture.nativeElement.querySelector('a[href="/usuarios"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('a[href="/auditoria"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href="/historias"]')).toBeNull();
   });
 
   it('cerrar sesión llama al backend, limpia el estado y navega a iniciar-sesion', async () => {
