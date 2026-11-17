@@ -292,3 +292,7 @@ dd[data-estado='opcional'] {
   justify-content: space-between;
   gap: 12px;
 }
+.aviso-archivada {
+  flex-wrap: wrap;
+  justify-content: space-between;
+}

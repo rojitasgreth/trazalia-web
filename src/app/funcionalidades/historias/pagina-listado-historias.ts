@@ -225,6 +225,18 @@ const ESPERA_BUSQUEDA_MS = 300;
                   <td class="nowrap secundario">{{ h.telefono }}</td>
                   <td class="nowrap secundario numerico">{{ fecha(h.fechaNacimiento) }}</td>
                   <td class="acciones">
+                    @if (h.archivada) {
+                      <button
+                        type="button"
+                        class="enlace-accion"
+                        [disabled]="desarchivando() === h.idHistoria"
+                        (click)="desarchivar(h)"
+                      >
+                        Desarchivar<span class="hc-solo-lector">
+                          la historia de {{ h.nombre }} {{ h.apellido }}</span
+                        >
+                      </button>
+                    }
                     <a [routerLink]="['/historias', h.idHistoria]"
                       >Abrir<span class="hc-solo-lector">
                         la historia de {{ h.nombre }} {{ h.apellido }}</span
@@ -517,6 +529,17 @@ const ESPERA_BUSQUEDA_MS = 300;
       text-align: right;
       white-space: nowrap;
     }
+    .enlace-accion {
+      margin-right: 12px;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--color-primario);
+      font: inherit;
+      font-size: var(--texto-s);
+      font-weight: 600;
+      cursor: pointer;
+    }
     .acciones a {
       font-size: var(--texto-s);
       font-weight: 600;
@@ -750,6 +773,20 @@ export class PaginaListadoHistorias {
   protected cambiarHasta(valor: string): void {
     this.paginaActual.set(1);
     this.hasta.set(valor);
+  }
+
+  /** B05 / AC-014: desarchivar desde el apartado de Archivadas. */
+  protected readonly desarchivando = signal<string | null>(null);
+
+  protected desarchivar(h: HistoriaResumen): void {
+    this.desarchivando.set(h.idHistoria);
+    this.api.desarchivar(h.idHistoria).subscribe({
+      next: () => {
+        this.desarchivando.set(null);
+        this.pagina.reload();
+      },
+      error: () => this.desarchivando.set(null),
+    });
   }
 
   protected irAPagina(numero: number): void {

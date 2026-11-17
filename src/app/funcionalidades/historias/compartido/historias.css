@@ -157,3 +157,13 @@
   font-weight: 700;
   cursor: pointer;
 }
+
+.hc-boton[data-variante='peligro'] {
+  background: var(--color-aviso);
+  color: var(--color-sobre-primario);
+}
+.hc-boton[data-variante='peligro-borde'] {
+  border: 1.5px solid var(--color-borde-error);
+  background: var(--color-superficie);
+  color: var(--color-aviso);
+}

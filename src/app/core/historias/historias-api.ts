@@ -45,4 +45,16 @@ export class HistoriasApi {
   ): Observable<{ historia: HistoriaDetalle }> {
     return this.http.patch<{ historia: HistoriaDetalle }>(`${RUTA}/${idHistoria}`, datos);
   }
+
+  eliminar(idHistoria: string): Observable<void> {
+    return this.http.delete<void>(`${RUTA}/${idHistoria}`);
+  }
+
+  archivar(idHistoria: string): Observable<{ historia: HistoriaDetalle }> {
+    return this.http.post<{ historia: HistoriaDetalle }>(`${RUTA}/${idHistoria}/archivar`, {});
+  }
+
+  desarchivar(idHistoria: string): Observable<{ historia: HistoriaDetalle }> {
+    return this.http.post<{ historia: HistoriaDetalle }>(`${RUTA}/${idHistoria}/desarchivar`, {});
+  }
 }

@@ -54,6 +54,7 @@ function neuroCarlos(cambios: Partial<HistoriaDetalle> = {}): HistoriaDetalle {
     representante: null,
     camposFaltantes: ['fuenteInformacion', 'nivelEducativo'],
     puedeIniciarValoracion: false,
+    tieneRegistrosClinicos: false,
     otrasHistorias: [
       {
         idHistoria: 'h2',
@@ -226,5 +227,98 @@ describe('PaginaDetalleHistoria', () => {
     expect(texto).toContain('30/07/1991');
     expect(texto).toMatch(/\d+ años/);
     expect(texto).toContain('Representante: cédula');
+  });
+
+  function boton(elemento: HTMLElement, texto: string): HTMLButtonElement {
+    return Array.from(elemento.querySelectorAll<HTMLButtonElement>('button')).find(
+      (b) => b.textContent?.trim() === texto,
+    )!;
+  }
+
+  async function actualizar() {
+    await harness.fixture.whenStable();
+    harness.fixture.detectChanges();
+  }
+
+  it('B25/AC-015: sin registros, elimina tras confirmar y vuelve al listado', async () => {
+    const elemento = await abrir(neuroCarlos());
+    const navegar = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    expect(boton(elemento, 'Archivar')).toBeUndefined();
+
+    boton(elemento, 'Eliminar').click();
+    await actualizar();
+    const dialogo = elemento.querySelector('[role="dialog"]')!;
+    expect(dialogo.textContent).toContain('¿Eliminar esta historia definitivamente?');
+    expect(dialogo.textContent).toContain('No se guarda copia de los datos.');
+    const eliminar = boton(elemento, 'Eliminar definitivamente');
+    expect(eliminar.disabled).toBe(true);
+
+    dialogo.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click();
+    await actualizar();
+    expect(eliminar.disabled).toBe(false);
+    eliminar.click();
+    const peticion = http.expectOne('/api/v1/historias/h1');
+    expect(peticion.request.method).toBe('DELETE');
+    peticion.flush(null, { status: 204, statusText: 'No Content' });
+    await actualizar();
+
+    expect(navegar).toHaveBeenCalledWith(['/historias']);
+  });
+
+  it('B26/AC-014: con registros explica el bloqueo y ofrece archivar', async () => {
+    const elemento = await abrir(neuroCarlos({ tieneRegistrosClinicos: true }));
+    const navegar = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    boton(elemento, 'Eliminar').click();
+    await actualizar();
+    expect(elemento.querySelector('[role="dialog"]')?.textContent).toContain(
+      'Esta historia no se puede eliminar',
+    );
+    boton(elemento, 'Archivar historia').click();
+    http
+      .expectOne('/api/v1/historias/h1/archivar')
+      .flush({ historia: neuroCarlos({ archivada: true }) });
+    await actualizar();
+
+    expect(navegar).toHaveBeenCalledWith(['/historias'], { queryParams: { vista: 'archivadas' } });
+  });
+
+  it('B27: "Archivar" pide confirmación; un error se informa', async () => {
+    const elemento = await abrir(neuroCarlos({ tieneRegistrosClinicos: true }));
+
+    boton(elemento, 'Archivar').click();
+    await actualizar();
+    expect(elemento.querySelector('[role="dialog"]')?.textContent).toContain(
+      '¿Archivar esta historia?',
+    );
+    Array.from(elemento.querySelectorAll<HTMLButtonElement>('[role="dialog"] button'))
+      .find((b) => b.textContent?.trim() === 'Archivar')!
+      .click();
+    http
+      .expectOne('/api/v1/historias/h1/archivar')
+      .flush(
+        { mensaje: 'La historia ya está archivada.' },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await actualizar();
+
+    expect(elemento.querySelector('[role="dialog"]')).toBeNull();
+    expect(elemento.querySelector('.error')?.textContent).toContain(
+      'La historia ya está archivada.',
+    );
+  });
+
+  it('B24: una historia archivada se desarchiva desde el aviso', async () => {
+    const elemento = await abrir(
+      neuroCarlos({ archivada: true, fechaArchivo: '2026-10-15T12:00:00.000Z' }),
+    );
+    expect(boton(elemento, 'Eliminar')).toBeUndefined();
+
+    boton(elemento, 'Desarchivar').click();
+    http.expectOne('/api/v1/historias/h1/desarchivar').flush({ historia: neuroCarlos() });
+    await actualizar();
+
+    expect(elemento.textContent).not.toContain('Historia archivada el');
+    expect(elemento.querySelector('.acciones a')?.textContent).toContain('Editar datos personales');
   });
 });
