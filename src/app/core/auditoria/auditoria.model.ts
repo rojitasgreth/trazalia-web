@@ -2,6 +2,8 @@ export interface EventoAuditoria {
   idEvento: string;
   idUsuarioActor: string | null;
   idUsuarioAfectado: string | null;
+  nombreActor: string | null;
+  nombreAfectado: string | null;
   tipoEvento: string;
   resultado: string;
   metadatosMinimos: Record<string, unknown> | null;

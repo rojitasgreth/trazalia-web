@@ -34,6 +34,8 @@ test('un administrador ve el enlace de Auditoría y consulta la bitácora con fi
             idEvento: 'e1',
             idUsuarioActor: 'admin-1',
             idUsuarioAfectado: null,
+            nombreActor: 'Admin Uno',
+            nombreAfectado: null,
             tipoEvento: url.searchParams.get('tipoEvento') ?? 'inicio_sesion',
             resultado: 'EXITOSO',
             metadatosMinimos: null,
@@ -52,6 +54,7 @@ test('un administrador ve el enlace de Auditoría y consulta la bitácora con fi
 
   await expect(page).toHaveURL(/\/auditoria$/);
   await expect(page.getByRole('cell', { name: 'inicio_sesion' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Admin Uno' })).toBeVisible();
 
   await page.getByLabel('Evento').fill('cierre_sesion');
   await page.getByRole('button', { name: 'Filtrar' }).click();
