@@ -16,6 +16,8 @@ import type {
   DatosRepresentante,
   ErrorDuplicado,
   ErrorValidacion,
+  HistoriaDelPaciente,
+  HistoriaDetalle,
   HistoriaResumen,
   TipoHistoria,
 } from '../../core/historias/historias.model';
@@ -37,11 +39,16 @@ import {
 } from './compartido/autocompletado';
 import { DialogoAutocompletar } from './compartido/dialogo-autocompletar';
 import { DialogoDuplicado } from './compartido/dialogo-duplicado';
+import { DialogoPropagar } from './compartido/dialogo-propagar';
+import { filasDeCambios, type FilaCambio } from './compartido/propagacion';
 import {
   TIPOS,
   calcularEdad,
   esTipoValido,
+  etiquetaEstado,
   formatearDocumento,
+  formatearFecha,
+  formatearMomentoEnFrase,
   type InfoTipo,
 } from './compartido/presentacion';
 
@@ -72,6 +79,47 @@ const NOMBRES_FALTANTE: Record<CampoIdentificacion, string> = {
   'representante.cedula': 'una cédula válida del representante',
 };
 
+interface TextosFormulario {
+  titulo: string;
+  estado: string;
+  volver: string;
+  volverRuta: string;
+  cancelarRuta: string;
+  notaObligatorio: string;
+  requisitos: string;
+  pie: string;
+  guardar: string;
+}
+
+/** Textos del prototipo para crear (B07) o editar (B16) una historia. */
+function textosDelFormulario(historia: HistoriaDetalle | null, ahora: Date): TextosFormulario {
+  if (!historia) {
+    return {
+      titulo: 'Nueva historia clínica',
+      estado: 'Borrador',
+      volver: '← Cambiar tipo de historia',
+      volverRuta: '/historias/nueva',
+      cancelarRuta: '/historias',
+      notaObligatorio: 'Obligatorio para crear la historia. Lo demás puede completarse después.',
+      requisitos: 'Para crear la historia',
+      pie: 'Se guarda como borrador; puedes completarla después.',
+      guardar: 'Guardar borrador',
+    };
+  }
+  const ruta = `/historias/${historia.idHistoria}`;
+  return {
+    titulo: 'Editar datos personales',
+    estado: etiquetaEstado(historia.estado, historia.archivada),
+    volver: '← Volver a la historia',
+    volverRuta: ruta,
+    cancelarRuta: ruta,
+    notaObligatorio: 'Obligatorio. No puede quedar vacío al guardar.',
+    requisitos: 'Datos obligatorios',
+    pie: `Última actualización: ${formatearMomentoEnFrase(historia.fechaActualizacion, ahora)}`,
+    guardar: 'Guardar cambios',
+  };
+}
+
 function hoyIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -83,14 +131,22 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
 /** B07–B12, B19 · Nueva historia: datos personales según el tipo (SPEC §8–§9). */
 @Component({
   selector: 'app-pagina-formulario-historia',
-  imports: [ReactiveFormsModule, RouterLink, DialogoDuplicado, DialogoAutocompletar],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    DialogoDuplicado,
+    DialogoAutocompletar,
+    DialogoPropagar,
+  ],
   template: `
     <div class="pagina">
       <header class="cabecera">
-        <a routerLink="/historias/nueva" class="volver">← Cambiar tipo de historia</a>
+        <a [routerLink]="textos.volverRuta" class="volver">{{ textos.volver }}</a>
         <div class="titulo">
-          <h1>Nueva historia clínica</h1>
-          <span class="hc-chip" data-estado="borrador">Borrador</span>
+          <h1>{{ textos.titulo }}</h1>
+          <span class="hc-chip" [attr.data-estado]="textos.estado.toLowerCase()">{{
+            textos.estado
+          }}</span>
         </div>
         <p class="subtitulo">
           <span class="hc-punto" [attr.data-tipo]="tipo"></span>{{ info.nombre }} ·
@@ -109,6 +165,13 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
           </div>
           <button type="button" class="hc-banner-boton" (click)="guardar()">Reintentar</button>
         </div>
+      } @else if (errorConflicto(); as mensaje) {
+        <div class="hc-banner" data-variante="error" role="alert">
+          <div class="hc-banner-texto">
+            <strong>No pudimos guardar los cambios</strong>
+            <span>{{ mensaje }}</span>
+          </div>
+        </div>
       } @else if (intentado() && erroresIdentificacion().length > 0) {
         <div class="hc-banner" data-variante="aviso" role="alert">
           <div class="hc-banner-texto">
@@ -121,6 +184,18 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
           <div class="hc-banner-texto">
             <strong>Usamos los datos de su historia de {{ auto.tipoOrigen }}</strong>
             <span>{{ auto.texto }}</span>
+          </div>
+        </div>
+      } @else if (historia && afectadas.length > 0) {
+        <div class="hc-banner" data-variante="info" role="status">
+          <div class="hc-banner-texto">
+            <strong>Estás editando datos personales</strong>
+            <span
+              >Este paciente tiene
+              {{ afectadas.length === 1 ? 'otra historia' : 'otras historias' }} ({{
+                tiposAfectados
+              }}). Al guardar te preguntaremos si quieres aplicar el cambio también allí.</span
+            >
           </div>
         </div>
       } @else if (!esAdulto && !datosRepresentante()) {
@@ -154,8 +229,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
           novalidate
         >
           <p class="nota-obligatorio">
-            <span class="asterisco">*</span> Obligatorio para crear la historia. Lo demás puede
-            completarse después.
+            <span class="asterisco">*</span> {{ textos.notaObligatorio }}
           </p>
 
           @if (!esAdulto) {
@@ -439,7 +513,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
 
         <aside class="lateral">
           <section class="panel">
-            <h2>Para crear la historia</h2>
+            <h2>{{ textos.requisitos }}</h2>
             <ul class="requisitos">
               @for (r of requisitos(); track r.etiqueta) {
                 <li [attr.data-estado]="r.estado">
@@ -485,8 +559,8 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
       </div>
 
       <div class="pie">
-        <span class="pie-nota">Se guarda como borrador; puedes completarla después.</span>
-        <a routerLink="/historias" class="hc-boton" data-variante="neutro">Cancelar</a>
+        <span class="pie-nota">{{ textos.pie }}</span>
+        <a [routerLink]="textos.cancelarRuta" class="hc-boton" data-variante="neutro">Cancelar</a>
         <button
           type="submit"
           form="formulario-historia"
@@ -494,7 +568,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
           data-variante="primario"
           [disabled]="enviando()"
         >
-          {{ enviando() ? 'Guardando…' : 'Guardar borrador' }}
+          {{ enviando() ? 'Guardando…' : textos.guardar }}
         </button>
       </div>
     </div>
@@ -513,6 +587,17 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
         [filas]="p.plan.filas"
         (usar)="usarAutocompletado()"
         (enBlanco)="propuesta.set(null)"
+      />
+    }
+    @if (dialogoPropagar(); as estado) {
+      <app-dialogo-propagar
+        [paciente]="nombrePaciente()"
+        [cambios]="cambios()"
+        [afectadas]="afectadas"
+        [fallo]="estado === 'fallo'"
+        (soloEsta)="enviarEdicion(false)"
+        (todas)="enviarEdicion(true)"
+        (cancelar)="dialogoPropagar.set(null)"
       />
     }
   `,
@@ -547,6 +632,14 @@ export class PaginaFormularioHistoria {
   private readonly aplicado = signal<Propuesta | null>(null);
   private readonly autocompletados = signal<ReadonlySet<string>>(new Set());
   private ultimaConsulta: string | null = null;
+
+  // B16–B18: edición de una historia existente.
+  protected readonly historia: HistoriaDetalle | null;
+  protected readonly textos: TextosFormulario;
+  protected readonly afectadas: HistoriaDelPaciente[];
+  protected readonly tiposAfectados: string;
+  protected readonly dialogoPropagar = signal<'preguntar' | 'fallo' | null>(null);
+  protected readonly errorConflicto = signal<string | null>(null);
 
   protected readonly formulario = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.maxLength(100)]],
@@ -647,11 +740,20 @@ export class PaginaFormularioHistoria {
   protected readonly sinDocumento = computed(() => this.datos().sinDocumento);
 
   protected readonly subtitulo = computed(() => {
-    const origen = this.aplicado()?.historia;
+    const origen = this.aplicado()?.historia ?? this.historia;
     return origen
       ? `${origen.nombre} ${origen.apellido} · ${formatearDocumento(origen)}`
       : 'se guardará como borrador';
   });
+
+  /** B17: cambios de datos compartidos respecto a lo guardado. */
+  protected readonly cambios = computed<FilaCambio[]>(() =>
+    this.historia ? filasDeCambios(this.tipo, this.historia.datos, this.datos()) : [],
+  );
+
+  protected readonly nombrePaciente = computed(() =>
+    this.historia ? `${this.historia.nombre} ${this.historia.apellido}` : '',
+  );
 
   /** B15: aviso de qué se copió y qué hay que completar porque no existía. */
   protected readonly autocompletado = computed(() => {
@@ -737,17 +839,27 @@ export class PaginaFormularioHistoria {
   });
 
   constructor() {
-    const parametro = inject(ActivatedRoute).snapshot.paramMap.get('tipo');
+    const ruta = inject(ActivatedRoute).snapshot;
+    // B16: en /historias/:id/editar la historia llega resuelta (historiaResolver).
+    this.historia = (ruta.data['historia'] as HistoriaDetalle | undefined) ?? null;
+    const parametro = ruta.paramMap.get('tipo');
     // La ruta solo existe para tipos válidos (ver app.routes); por defensa se
     // cae a Traumatología si alguien llega con un valor inesperado.
-    this.tipo = esTipoValido(parametro) ? parametro : 'TRAUMA_ADULTO';
+    this.tipo = this.historia?.tipo ?? (esTipoValido(parametro) ? parametro : 'TRAUMA_ADULTO');
     this.info = TIPOS[this.tipo];
     this.esAdulto = this.tipo !== 'REHAB_INFANTIL';
     this.secciones = seccionesDe(this.tipo);
     this.total = totalExigibles(this.tipo);
-    this.notaValoracion = this.esAdulto
-      ? 'La primera valoración se habilita cuando los datos personales estén completos. Al completarla, la historia pasa a Activa.'
-      : 'La primera valoración se habilita cuando los datos personales estén completos y el representante esté registrado.';
+    this.textos = textosDelFormulario(this.historia, this.ahora);
+    // §10.2: las archivadas nunca se modifican, así que no cuentan como afectadas.
+    this.afectadas = this.historia?.otrasHistorias.filter((h) => !h.archivada) ?? [];
+    this.tiposAfectados = enumerar(this.afectadas.map((h) => TIPOS[h.tipo].nombre));
+    this.notaValoracion =
+      this.historia?.estado === 'ACTIVA'
+        ? 'Esta historia está Activa: su primera valoración ya se completó. Puedes corregir los datos personales cuando lo necesites.'
+        : this.esAdulto
+          ? 'La primera valoración se habilita cuando los datos personales estén completos. Al completarla, la historia pasa a Activa.'
+          : 'La primera valoración se habilita cuando los datos personales estén completos y el representante esté registrado.';
 
     this.formulario.controls.sinDocumento.valueChanges.subscribe((marcado) => {
       const { cedula, nacionalidad } = this.formulario.controls;
@@ -761,6 +873,22 @@ export class PaginaFormularioHistoria {
         nacionalidad.enable({ emitEvent: false });
       }
     });
+
+    if (this.historia) this.cargar(this.historia);
+  }
+
+  /** B16: rellena el formulario con los datos guardados (null → vacío). */
+  private cargar(historia: HistoriaDetalle): void {
+    const vacio = <T>(objeto: T) =>
+      Object.fromEntries(
+        Object.entries(objeto as object).map(([clave, valor]) => [clave, valor ?? '']),
+      );
+    this.formulario.patchValue({
+      ...vacio(historia.datos),
+      sinDocumento: historia.datos.sinDocumento,
+      fuenteInformacion: historia.datos.fuenteInformacion,
+      ...(historia.representante ? { representante: vacio(historia.representante) } : {}),
+    });
   }
 
   protected guardar(): void {
@@ -773,6 +901,17 @@ export class PaginaFormularioHistoria {
     }
 
     this.errorGuardado.set(false);
+    this.errorConflicto.set(null);
+    if (this.historia) {
+      // RF-014/AC-010: si cambió un dato compartido y hay otras historias que
+      // podrían recibirlo, se pregunta antes de guardar (B17).
+      if (this.cambios().length > 0 && this.afectadas.length > 0) {
+        this.dialogoPropagar.set('preguntar');
+      } else {
+        this.enviarEdicion(false);
+      }
+      return;
+    }
     this.enviando.set(true);
     this.api.crear(this.cuerpo()).subscribe({
       next: ({ historia }) => {
@@ -794,6 +933,8 @@ export class PaginaFormularioHistoria {
    * consulta una sola vez por combinación.
    */
   protected consultarCoincidencias(): void {
+    // Al editar no se autocompleta: el backend valida el documento al guardar.
+    if (this.historia) return;
     const d = this.datos();
     const clave =
       d.nacionalidad && d.cedula && /^\d{1,9}$/.test(d.cedula)
@@ -847,16 +988,68 @@ export class PaginaFormularioHistoria {
     this.propuesta.set(null);
   }
 
-  /** Insignia junto a la etiqueta del campo (B15: "Autocompletado"). */
+  /** Insignia junto a la etiqueta: "Autocompletado" (B15) o "Modificado" (B16). */
   protected insignia(clave: string): string {
-    return this.autocompletados().has(clave) ? 'Autocompletado' : '';
+    if (this.autocompletados().has(clave)) return 'Autocompletado';
+    return this.modificado(clave) ? 'Modificado' : '';
+  }
+
+  private modificado(clave: string): boolean {
+    const original = this.historia?.datos;
+    if (!original) return false;
+    const actual = this.datos();
+    if (clave === 'documento') {
+      return (
+        original.nacionalidad !== actual.nacionalidad ||
+        original.cedula !== actual.cedula ||
+        original.sinDocumento !== actual.sinDocumento
+      );
+    }
+    if (!(clave in actual)) return false;
+    const antes = original[clave as keyof DatosPersonales];
+    const despues = actual[clave as keyof DatosPersonales];
+    return Array.isArray(antes) ? antes.join() !== (despues as string[]).join() : antes !== despues;
   }
 
   protected abrirExistente(idHistoria: string): void {
     void this.router.navigate(['/historias', idHistoria]);
   }
 
+  /** B16–B18: guarda la edición, solo en esta historia o también en las demás. */
+  protected enviarEdicion(propagar: boolean): void {
+    const historia = this.historia;
+    if (!historia || this.enviando()) return;
+    this.enviando.set(true);
+    this.api.actualizar(historia.idHistoria, { ...this.datosAEnviar(), propagar }).subscribe({
+      next: () => {
+        this.enviando.set(false);
+        this.dialogoPropagar.set(null);
+        void this.router.navigate(['/historias', historia.idHistoria], {
+          state: { actualizada: true },
+        });
+      },
+      error: (error: unknown) => {
+        this.enviando.set(false);
+        const regla =
+          error instanceof HttpErrorResponse && (error.status === 400 || error.status === 409);
+        // B18: si falló la propagación no se modificó ninguna historia.
+        if (propagar && !regla) {
+          this.dialogoPropagar.set('fallo');
+          return;
+        }
+        this.dialogoPropagar.set(null);
+        this.manejarError(error);
+      },
+    });
+  }
+
   private manejarError(error: unknown): void {
+    if (error instanceof HttpErrorResponse && error.status === 409 && this.historia) {
+      this.errorConflicto.set(
+        (error.error as ErrorDuplicado | null)?.mensaje ?? 'Los datos entran en conflicto.',
+      );
+      return;
+    }
     if (error instanceof HttpErrorResponse && error.status === 409) {
       const id = (error.error as ErrorDuplicado | null)?.idHistoriaExistente;
       if (id) {
@@ -879,11 +1072,14 @@ export class PaginaFormularioHistoria {
     this.errorGuardado.set(true);
   }
 
-  /** Solo se envían los campos de la ficha del tipo (SPEC §9.1). */
   private cuerpo(): CrearHistoriaPayload {
+    return { tipo: this.tipo, ...this.datosAEnviar() };
+  }
+
+  /** Solo se envían los campos de la ficha del tipo (SPEC §9.1). */
+  private datosAEnviar(): Omit<CrearHistoriaPayload, 'tipo'> {
     const d = this.datos();
-    const cuerpo: CrearHistoriaPayload = {
-      tipo: this.tipo,
+    const cuerpo: Omit<CrearHistoriaPayload, 'tipo'> = {
       nombre: d.nombre,
       apellido: d.apellido,
       nacionalidad: d.nacionalidad,
@@ -969,6 +1165,10 @@ export class PaginaFormularioHistoria {
       if (campo.tipo === 'fecha') return 'La fecha de nacimiento no puede ser futura.';
       if (campo.tipo === 'email') return 'El correo no tiene un formato válido.';
       if (campo.tipo === 'tel') return 'El teléfono solo admite dígitos, espacios y + ( ) -.';
+    }
+    if (this.insignia(campo.clave) === 'Modificado' && campo.tipo !== 'seleccion') {
+      const antes = this.historia?.datos[campo.clave as keyof DatosPersonales];
+      return `Antes: ${(campo.tipo === 'fecha' ? formatearFecha(antes as string | null) : antes) || '—'}`;
     }
     return this.ayuda(campo);
   }

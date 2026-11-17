@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import type {
+  ActualizarHistoriaPayload,
   ConsultaCoincidencias,
   CrearHistoriaPayload,
   FiltrosHistorias,
@@ -36,5 +37,12 @@ export class HistoriasApi {
 
   coincidencias(consulta: ConsultaCoincidencias): Observable<ResultadoCoincidencia> {
     return this.http.post<ResultadoCoincidencia>(`${RUTA}/coincidencias`, consulta);
+  }
+
+  actualizar(
+    idHistoria: string,
+    datos: ActualizarHistoriaPayload,
+  ): Observable<{ historia: HistoriaDetalle }> {
+    return this.http.patch<{ historia: HistoriaDetalle }>(`${RUTA}/${idHistoria}`, datos);
   }
 }

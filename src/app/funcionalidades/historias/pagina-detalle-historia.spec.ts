@@ -55,7 +55,13 @@ function neuroCarlos(cambios: Partial<HistoriaDetalle> = {}): HistoriaDetalle {
     camposFaltantes: ['fuenteInformacion', 'nivelEducativo'],
     puedeIniciarValoracion: false,
     otrasHistorias: [
-      { idHistoria: 'h2', tipo: 'TRAUMA_ADULTO', estado: 'ACTIVA', archivada: false },
+      {
+        idHistoria: 'h2',
+        tipo: 'TRAUMA_ADULTO',
+        estado: 'ACTIVA',
+        archivada: false,
+        sinDocumento: false,
+      },
     ],
     ...cambios,
   };
@@ -118,6 +124,17 @@ describe('PaginaDetalleHistoria', () => {
     expect(otra?.getAttribute('href')).toBe('/historias/h2');
     expect(otra?.textContent).toContain('Traumatología del adulto');
     expect(texto).toContain('Secciones clínicas');
+    // RF-018: el propietario puede editar los datos personales.
+    expect(elemento.querySelector('.acciones a')?.getAttribute('href')).toBe(
+      '/historias/h1/editar',
+    );
+  });
+
+  it('tras editar avisa de que los cambios se guardaron', async () => {
+    const elemento = await abrir(neuroCarlos(), { actualizada: true });
+
+    expect(elemento.textContent).toContain('Cambios guardados.');
+    expect(elemento.textContent).not.toContain('Historia guardada como borrador.');
   });
 
   it('con los datos completos indica que la valoración llega en la próxima fase', async () => {
@@ -143,6 +160,8 @@ describe('PaginaDetalleHistoria', () => {
     const texto = elemento.textContent ?? '';
 
     expect(texto).toContain('Historia archivada el 15/10/2026.');
+    // Solo lectura: sin acción de editar.
+    expect(elemento.querySelector('.acciones a')).toBeNull();
     expect(texto).toContain('Completada. Con ella la historia pasó a Activa.');
     expect(texto).toContain('Archivada');
   });
@@ -176,6 +195,11 @@ describe('PaginaDetalleHistoria', () => {
     );
     expect(elemento.textContent).toContain('Sin documento');
     expect(elemento.textContent).toContain('Representante (3 datos)');
+    expect(
+      Array.from(elemento.querySelectorAll('a'))
+        .find((a) => a.textContent?.includes('Agregar representante'))
+        ?.getAttribute('href'),
+    ).toBe('/historias/h1/editar');
   });
 
   it('muestra los datos del representante registrado', async () => {

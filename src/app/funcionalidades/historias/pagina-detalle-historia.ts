@@ -64,10 +64,14 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
             <circle cx="12" cy="12" r="9" />
             <path d="M8 12l3 3 5-6" />
           </svg>
-          <span
-            ><strong>Historia guardada como borrador.</strong> Puedes completar los datos que faltan
-            cuando quieras.</span
-          >
+          @if (guardada() === 'creada') {
+            <span
+              ><strong>Historia guardada como borrador.</strong> Puedes completar los datos que
+              faltan cuando quieras.</span
+            >
+          } @else {
+            <span><strong>Cambios guardados.</strong></span>
+          }
         </div>
       }
 
@@ -108,6 +112,18 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
               <span class="fechas">{{ fechas(h) }}</span>
             </div>
           </div>
+          <div class="acciones">
+            @if (!h.archivada) {
+              <!-- RF-018: solo el propietario edita (el backend lo garantiza). -->
+              <a
+                [routerLink]="['/historias', h.idHistoria, 'editar']"
+                class="hc-boton"
+                data-variante="secundario"
+                data-tamano="compacto"
+                >Editar datos personales</a
+              >
+            }
+          </div>
         </header>
 
         <div class="cuerpo">
@@ -128,6 +144,15 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
                 @if (grupo.sinRegistrar) {
                   <div class="aviso-representante">
                     <span>Registra al representante para poder iniciar la valoración.</span>
+                    @if (!h.archivada) {
+                      <a
+                        [routerLink]="['/historias', h.idHistoria, 'editar']"
+                        class="hc-boton"
+                        data-variante="primario"
+                        data-tamano="compacto"
+                        >Agregar representante</a
+                      >
+                    }
                   </div>
                 }
                 <dl>
@@ -222,9 +247,11 @@ export class PaginaDetalleHistoria {
     'Documentos',
   ];
 
-  /** B20: aviso de guardado cuando se llega desde el formulario. */
-  protected readonly guardada = signal(
-    !!inject(Router).currentNavigation()?.extras.state?.['guardada'],
+  /** B20: aviso de guardado cuando se llega desde el formulario (crear o editar). */
+  protected readonly guardada = signal<'creada' | 'editada' | null>(
+    ((estado) => (estado?.['guardada'] ? 'creada' : estado?.['actualizada'] ? 'editada' : null))(
+      inject(Router).currentNavigation()?.extras.state,
+    ),
   );
 
   private readonly id = toSignal(
