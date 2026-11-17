@@ -60,4 +60,19 @@ describe('HistoriasApi', () => {
     expect(peticion.request.body).toEqual({ tipo: 'NEURO_ADULTO', nacionalidad: 'V', cedula: '1' });
     peticion.flush({ resultado: 'ninguna' });
   });
+
+  it('eliminar es DELETE; archivar y desarchivar son POST', () => {
+    api.eliminar('h1').subscribe();
+    api.archivar('h1').subscribe();
+    api.desarchivar('h1').subscribe();
+
+    const borrado = http.expectOne(
+      (r) => r.method === 'DELETE' && r.url === '/api/v1/historias/h1',
+    );
+    borrado.flush(null);
+    http.expectOne('/api/v1/historias/h1/archivar').flush({ historia: {} });
+    const desarchivo = http.expectOne('/api/v1/historias/h1/desarchivar');
+    expect(desarchivo.request.method).toBe('POST');
+    desarchivo.flush({ historia: {} });
+  });
 });

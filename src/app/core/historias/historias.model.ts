@@ -74,6 +74,8 @@ export interface HistoriaDetalle extends HistoriaResumen {
   /** Claves de campo (`documento`, `telefono`, `representante.nombre`…). */
   camposFaltantes: string[];
   puedeIniciarValoracion: boolean;
+  /** §13: con registros clínicos no se elimina; se archiva. */
+  tieneRegistrosClinicos: boolean;
   otrasHistorias: HistoriaDelPaciente[];
 }
 

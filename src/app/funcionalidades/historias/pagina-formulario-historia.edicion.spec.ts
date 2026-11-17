@@ -51,6 +51,7 @@ function trauma(cambios: Partial<HistoriaDetalle> = {}): HistoriaDetalle {
     representante: null,
     camposFaltantes: [],
     puedeIniciarValoracion: false,
+    tieneRegistrosClinicos: false,
     otrasHistorias: [
       {
         idHistoria: 'h2',

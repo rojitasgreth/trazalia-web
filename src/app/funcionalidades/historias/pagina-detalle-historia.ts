@@ -9,6 +9,7 @@ import type {
   HistoriaDetalle,
   TipoHistoria,
 } from '../../core/historias/historias.model';
+import { DialogoGestion, type AccionGestion } from './compartido/dialogo-gestion';
 import {
   CAMPOS_REPRESENTANTE,
   PARENTESCOS,
@@ -45,7 +46,7 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
 /** B20–B24 · Detalle de una historia: datos personales y estado (SPEC §19). */
 @Component({
   selector: 'app-pagina-detalle-historia',
-  imports: [RouterLink],
+  imports: [RouterLink, DialogoGestion],
   template: `
     <div class="pagina">
       @if (guardada()) {
@@ -82,7 +83,20 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
         @let h = historia.value();
         @if (h.archivada) {
           <div class="aviso-archivada" role="status">
-            <strong>Historia archivada el {{ fecha(h.fechaArchivo) }}.</strong> Es de solo lectura.
+            <span
+              ><strong>Historia archivada el {{ fecha(h.fechaArchivo) }}.</strong> Es de solo
+              lectura. Para editarla, desarchívala.</span
+            >
+            <button
+              type="button"
+              class="hc-boton"
+              data-variante="primario"
+              data-tamano="compacto"
+              [disabled]="procesando()"
+              (click)="desarchivar(h)"
+            >
+              Desarchivar
+            </button>
           </div>
         }
 
@@ -122,6 +136,27 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
                 data-tamano="compacto"
                 >Editar datos personales</a
               >
+              @if (h.tieneRegistrosClinicos) {
+                <button
+                  type="button"
+                  class="hc-boton"
+                  data-variante="neutro"
+                  data-tamano="compacto"
+                  (click)="accion.set('archivar')"
+                >
+                  Archivar
+                </button>
+              }
+              <!-- §13: con registros clínicos se explica el bloqueo y se ofrece archivar (B26). -->
+              <button
+                type="button"
+                class="hc-boton"
+                data-variante="peligro-borde"
+                data-tamano="compacto"
+                (click)="accion.set(h.tieneRegistrosClinicos ? 'eliminarBloqueado' : 'eliminar')"
+              >
+                Eliminar
+              </button>
             }
           </div>
         </header>
@@ -228,6 +263,19 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
             </section>
           </aside>
         </div>
+
+        @if (errorAccion()) {
+          <p class="error" role="alert">{{ errorAccion() }}</p>
+        }
+        @if (accion(); as a) {
+          <app-dialogo-gestion
+            [accion]="a"
+            [historia]="h"
+            [ocupado]="procesando()"
+            (confirmar)="confirmar(a, h)"
+            (cancelar)="accion.set(null)"
+          />
+        }
       } @else {
         <p role="status">Cargando…</p>
       }
@@ -237,7 +285,13 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
 })
 export class PaginaDetalleHistoria {
   private readonly api = inject(HistoriasApi);
+  private readonly router = inject(Router);
   private readonly ahora = new Date();
+
+  // B25–B27: eliminar, archivar y desarchivar.
+  protected readonly accion = signal<AccionGestion | null>(null);
+  protected readonly procesando = signal(false);
+  protected readonly errorAccion = signal<string | null>(null);
 
   protected readonly seccionesFuturas = [
     'Anamnesis',
@@ -273,6 +327,47 @@ export class PaginaDetalleHistoria {
       ? resumirFaltantes(this.historia.value().tipo, this.historia.value().camposFaltantes)
       : [],
   );
+
+  protected confirmar(accion: AccionGestion, h: HistoriaDetalle): void {
+    this.procesando.set(true);
+    this.errorAccion.set(null);
+    if (accion === 'eliminar') {
+      // RF-020: borrado definitivo; se vuelve al listado.
+      this.api.eliminar(h.idHistoria).subscribe({
+        next: () => void this.router.navigate(['/historias']),
+        error: (error: unknown) => this.fallo(error, 'No se pudo eliminar la historia.'),
+      });
+      return;
+    }
+    // B26/B27: archivar; la historia pasa al apartado de Archivadas.
+    this.api.archivar(h.idHistoria).subscribe({
+      next: () =>
+        void this.router.navigate(['/historias'], { queryParams: { vista: 'archivadas' } }),
+      error: (error: unknown) => this.fallo(error, 'No se pudo archivar la historia.'),
+    });
+  }
+
+  protected desarchivar(h: HistoriaDetalle): void {
+    this.procesando.set(true);
+    this.errorAccion.set(null);
+    this.api.desarchivar(h.idHistoria).subscribe({
+      next: ({ historia }) => {
+        this.procesando.set(false);
+        this.historia.set(historia);
+      },
+      error: (error: unknown) => this.fallo(error, 'No se pudo desarchivar la historia.'),
+    });
+  }
+
+  private fallo(error: unknown, porDefecto: string): void {
+    this.procesando.set(false);
+    this.accion.set(null);
+    const mensaje =
+      error instanceof HttpErrorResponse
+        ? (error.error as { mensaje?: string } | null)?.mensaje
+        : null;
+    this.errorAccion.set(mensaje ?? porDefecto);
+  }
 
   protected mensajeError(): string {
     const error = this.historia.error();

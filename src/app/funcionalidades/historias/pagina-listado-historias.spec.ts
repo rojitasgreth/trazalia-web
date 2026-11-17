@@ -184,4 +184,18 @@ describe('PaginaListadoHistorias', () => {
 
     expect(texto()).toContain('No se pudieron cargar las historias');
   });
+
+  it('B05/AC-014: desarchiva desde la pestaña Archivadas y recarga el listado', async () => {
+    await abrir('/historias?vista=archivadas');
+    responder(pagina([{ ...CARLOS, archivada: true, fechaArchivo: '2026-10-15T12:00:00.000Z' }]));
+    await estable();
+
+    harness.routeNativeElement!.querySelector<HTMLButtonElement>('.enlace-accion')!.click();
+    http.expectOne('/api/v1/historias/h1/desarchivar').flush({ historia: CARLOS });
+    harness.fixture.detectChanges();
+
+    const recarga = responder(pagina([], { conteos: { historias: 1, archivadas: 0 } }));
+    await estable();
+    expect(recarga.params.get('archivadas')).toBe('true');
+  });
 });

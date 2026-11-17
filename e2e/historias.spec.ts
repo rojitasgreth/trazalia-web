@@ -65,6 +65,7 @@ const DETALLE = {
     'contactoTelefono',
   ],
   puedeIniciarValoracion: false,
+  tieneRegistrosClinicos: false,
   otrasHistorias: [],
 };
 
@@ -312,4 +313,47 @@ test('B16/B17: edita el teléfono y lo aplica también a la otra historia del pa
   await expect(page).toHaveURL(new RegExp(`/historias/${RESUMEN.idHistoria}$`));
   await expect(page.getByText('Cambios guardados.')).toBeVisible();
   expect(cuerpo).toMatchObject({ telefono: '0424-555-8890', propagar: true });
+});
+
+test('B25: elimina definitivamente una historia sin registros clínicos', async ({ page }) => {
+  await iniciarSesionComo(page, FISIO);
+  await simularListado(page, []);
+  let eliminada = false;
+  await page.route(`**/api/v1/historias/${RESUMEN.idHistoria}`, (ruta) => {
+    if (ruta.request().method() === 'DELETE') {
+      eliminada = true;
+      return ruta.fulfill({ status: 204 });
+    }
+    return ruta.fulfill({ json: { historia: DETALLE } });
+  });
+
+  await page.goto(`/historias/${RESUMEN.idHistoria}`);
+  await page.getByRole('button', { name: 'Eliminar', exact: true }).click();
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo).toContainText('¿Eliminar esta historia definitivamente?');
+  await expect(dialogo.getByRole('button', { name: 'Eliminar definitivamente' })).toBeDisabled();
+  await dialogo.getByText('Entiendo que esta acción no se puede deshacer').click();
+  await dialogo.getByRole('button', { name: 'Eliminar definitivamente' }).click();
+
+  await expect(page).toHaveURL(/\/historias$/);
+  expect(eliminada).toBe(true);
+});
+
+test('B26/B27: con registros clínicos no se elimina; se archiva', async ({ page }) => {
+  await iniciarSesionComo(page, FISIO);
+  await simularListado(page, []);
+  await page.route(`**/api/v1/historias/${RESUMEN.idHistoria}`, (ruta) =>
+    ruta.fulfill({ json: { historia: { ...DETALLE, tieneRegistrosClinicos: true } } }),
+  );
+  await page.route(`**/api/v1/historias/${RESUMEN.idHistoria}/archivar`, (ruta) =>
+    ruta.fulfill({ json: { historia: { ...DETALLE, archivada: true } } }),
+  );
+
+  await page.goto(`/historias/${RESUMEN.idHistoria}`);
+  await page.getByRole('button', { name: 'Eliminar', exact: true }).click();
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo).toContainText('Esta historia no se puede eliminar');
+  await dialogo.getByRole('button', { name: 'Archivar historia' }).click();
+
+  await expect(page).toHaveURL(/\/historias\?vista=archivadas$/);
 });
