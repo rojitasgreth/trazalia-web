@@ -28,7 +28,7 @@ test('inicia sesión y muestra el panel con el estado del servidor', async ({ pa
 
   await page.goto('/iniciar-sesion');
   await page.getByLabel('Correo o nombre de usuario').fill('ana@b.com');
-  await page.getByLabel('Contraseña').fill('contraseña-válida');
+  await page.getByLabel('Contraseña', { exact: true }).fill('contraseña-válida');
   await page.getByRole('button', { name: 'Entrar' }).click();
 
   await expect(page).toHaveURL(/\/$/);
@@ -43,7 +43,7 @@ test('muestra un mensaje de error ante credenciales inválidas', async ({ page }
 
   await page.goto('/iniciar-sesion');
   await page.getByLabel('Correo o nombre de usuario').fill('ana@b.com');
-  await page.getByLabel('Contraseña').fill('incorrecta');
+  await page.getByLabel('Contraseña', { exact: true }).fill('incorrecta');
   await page.getByRole('button', { name: 'Entrar' }).click();
 
   await expect(page.getByRole('alert')).toHaveText('Credenciales inválidas');

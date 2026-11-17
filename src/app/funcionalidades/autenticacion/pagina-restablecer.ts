@@ -1,3 +1,4 @@
+import { CampoContrasena } from '../../compartido/ui/campo-contrasena/campo-contrasena';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -12,7 +13,7 @@ import { Marca } from '../../compartido/ui/marca/marca';
 /** A07 · Restablecimiento de contraseña desde el enlace de recuperación (BR-013/014). */
 @Component({
   selector: 'app-pagina-restablecer',
-  imports: [ReactiveFormsModule, RouterLink, Marca, EnlaceInvalido],
+  imports: [CampoContrasena, ReactiveFormsModule, RouterLink, Marca, EnlaceInvalido],
   template: `
     @if (!token() || enlaceInvalido()) {
       <app-enlace-invalido />
@@ -31,13 +32,16 @@ import { Marca } from '../../compartido/ui/marca/marca';
 
             <form [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
               <label for="contrasena">Contraseña nueva</label>
-              <input
-                id="contrasena"
-                type="password"
-                formControlName="contrasena"
-                autocomplete="new-password"
-                [attr.aria-invalid]="mostrarErrorCampo('contrasena')"
-              />
+              <app-campo-contrasena>
+                <input
+                  #campo
+                  id="contrasena"
+                  type="password"
+                  formControlName="contrasena"
+                  autocomplete="new-password"
+                  [attr.aria-invalid]="mostrarErrorCampo('contrasena')"
+                />
+              </app-campo-contrasena>
               @if (mostrarErrorCampo('contrasena')) {
                 <p class="error-campo">
                   Debe tener entre 8 y 32 caracteres y no contener espacios.
@@ -45,13 +49,16 @@ import { Marca } from '../../compartido/ui/marca/marca';
               }
 
               <label for="confirmarContrasena">Repite la contraseña</label>
-              <input
-                id="confirmarContrasena"
-                type="password"
-                formControlName="confirmarContrasena"
-                autocomplete="new-password"
-                [attr.aria-invalid]="mostrarErrorConfirmacion()"
-              />
+              <app-campo-contrasena>
+                <input
+                  #campo
+                  id="confirmarContrasena"
+                  type="password"
+                  formControlName="confirmarContrasena"
+                  autocomplete="new-password"
+                  [attr.aria-invalid]="mostrarErrorConfirmacion()"
+                />
+              </app-campo-contrasena>
               @if (mostrarErrorConfirmacion()) {
                 <p class="error-campo">Las contraseñas no coinciden.</p>
               }

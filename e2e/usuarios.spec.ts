@@ -78,7 +78,7 @@ test('activar-cuenta: crea la contraseña y lleva a iniciar sesión', async ({ p
 
   await page.goto('/activar-cuenta?token=token-valido');
   await page.getByLabel('Contraseña', { exact: true }).fill('una-contraseña-nueva');
-  await page.getByLabel('Confirmar contraseña').fill('una-contraseña-nueva');
+  await page.getByLabel('Confirmar contraseña', { exact: true }).fill('una-contraseña-nueva');
   await page.getByRole('button', { name: 'Activar cuenta' }).click();
 
   await expect(page.getByRole('heading', { name: 'Cuenta activada' })).toBeVisible();

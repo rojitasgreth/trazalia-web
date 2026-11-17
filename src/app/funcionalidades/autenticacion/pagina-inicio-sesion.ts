@@ -1,3 +1,4 @@
+import { CampoContrasena } from '../../compartido/ui/campo-contrasena/campo-contrasena';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -9,7 +10,7 @@ import { Marca } from '../../compartido/ui/marca/marca';
 /** A01 · Inicio de sesión. BR-010: acepta correo o nombre de usuario. */
 @Component({
   selector: 'app-pagina-inicio-sesion',
-  imports: [ReactiveFormsModule, RouterLink, Marca],
+  imports: [CampoContrasena, ReactiveFormsModule, RouterLink, Marca],
   template: `
     <main class="contenedor">
       <form class="tarjeta" [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
@@ -26,13 +27,16 @@ import { Marca } from '../../compartido/ui/marca/marca';
         />
 
         <label for="contrasena">Contraseña</label>
-        <input
-          id="contrasena"
-          type="password"
-          formControlName="contrasena"
-          autocomplete="current-password"
-          [attr.aria-invalid]="mostrarError()"
-        />
+        <app-campo-contrasena>
+          <input
+            #campo
+            id="contrasena"
+            type="password"
+            formControlName="contrasena"
+            autocomplete="current-password"
+            [attr.aria-invalid]="mostrarError()"
+          />
+        </app-campo-contrasena>
 
         @if (mostrarError()) {
           <p class="error" role="alert">{{ mensajeError() }}</p>
