@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/auth/admin.guard';
 import { authGuard, invitadoGuard } from './core/auth/auth.guard';
+import { fisioterapeutaGuard } from './core/auth/fisioterapeuta.guard';
+import { tipoHistoriaDisponibleGuard } from './funcionalidades/historias/compartido/tipo-disponible.guard';
 
 export const routes: Routes = [
   {
@@ -71,6 +73,41 @@ export const routes: Routes = [
         canActivate: [adminGuard],
         loadComponent: () =>
           import('./funcionalidades/auditoria/pagina-auditoria').then((m) => m.PaginaAuditoria),
+      },
+      {
+        path: 'historias',
+        canActivate: [fisioterapeutaGuard],
+        children: [
+          {
+            path: '',
+            loadComponent: () =>
+              import('./funcionalidades/historias/pagina-listado-historias').then(
+                (m) => m.PaginaListadoHistorias,
+              ),
+          },
+          {
+            path: 'nueva',
+            loadComponent: () =>
+              import('./funcionalidades/historias/pagina-elegir-tipo').then(
+                (m) => m.PaginaElegirTipo,
+              ),
+          },
+          {
+            path: 'nueva/:tipo',
+            canActivate: [tipoHistoriaDisponibleGuard],
+            loadComponent: () =>
+              import('./funcionalidades/historias/pagina-formulario-historia').then(
+                (m) => m.PaginaFormularioHistoria,
+              ),
+          },
+          {
+            path: ':id',
+            loadComponent: () =>
+              import('./funcionalidades/historias/pagina-detalle-historia').then(
+                (m) => m.PaginaDetalleHistoria,
+              ),
+          },
+        ],
       },
       {
         path: 'mi-cuenta',

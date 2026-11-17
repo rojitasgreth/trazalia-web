@@ -21,13 +21,16 @@ import { ModalInactividad } from '../modal-inactividad/modal-inactividad';
   },
   template: `
     <div class="pagina">
-      <nav class="barra-lateral" aria-label="Administración">
+      <nav class="barra-lateral" aria-label="Principal">
         <div class="marca-lateral">
           <app-marca />
         </div>
         <a routerLink="/" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: true }"
           >Inicio</a
         >
+        @if (usuario()?.rol === 'FISIOTERAPEUTA') {
+          <a routerLink="/historias" routerLinkActive="activo">Historias clínicas</a>
+        }
         @if (usuario()?.rol === 'ADMINISTRADOR') {
           <a routerLink="/usuarios" routerLinkActive="activo">Usuarios</a>
           <a routerLink="/auditoria" routerLinkActive="activo">Auditoría</a>
