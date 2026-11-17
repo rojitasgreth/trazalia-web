@@ -19,10 +19,13 @@ import type {
   HistoriaDelPaciente,
   HistoriaDetalle,
   HistoriaResumen,
+  ModalidadAtencion,
   TipoHistoria,
 } from '../../core/historias/historias.model';
+import type { CentroMedico } from '../../core/centros/centros.model';
 import {
   CAMPOS_REPRESENTANTE,
+  MODALIDADES,
   PARENTESCOS,
   SEXOS,
   camposFaltantes,
@@ -37,7 +40,9 @@ import {
   planDeAutocompletado,
   type PlanAutocompletado,
 } from './compartido/autocompletado';
+import { BuscadorCentro } from './compartido/buscador-centro';
 import { DialogoAutocompletar } from './compartido/dialogo-autocompletar';
+import { DialogoNuevoCentro } from './compartido/dialogo-nuevo-centro';
 import { DialogoDuplicado } from './compartido/dialogo-duplicado';
 import { DialogoPropagar } from './compartido/dialogo-propagar';
 import { filasDeCambios, type FilaCambio } from './compartido/propagacion';
@@ -69,6 +74,7 @@ const MENSAJES: Record<CampoIdentificacion, string> = {
     'Escribe la nacionalidad y el número de cédula. Son obligatorios para crear la historia.',
   fechaNacimiento: 'Escribe la fecha de nacimiento. Sin documento, es obligatoria.',
   'representante.cedula': 'La cédula del representante debe contener solo dígitos, máximo 9.',
+  centro: 'El centro médico seleccionado no existe. Búscalo de nuevo.',
 };
 
 const NOMBRES_FALTANTE: Record<CampoIdentificacion, string> = {
@@ -77,6 +83,7 @@ const NOMBRES_FALTANTE: Record<CampoIdentificacion, string> = {
   documento: 'la cédula',
   fechaNacimiento: 'la fecha de nacimiento',
   'representante.cedula': 'una cédula válida del representante',
+  centro: 'un centro médico válido',
 };
 
 interface TextosFormulario {
@@ -137,6 +144,8 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
     DialogoDuplicado,
     DialogoAutocompletar,
     DialogoPropagar,
+    BuscadorCentro,
+    DialogoNuevoCentro,
   ],
   template: `
     <div class="pagina">
@@ -323,7 +332,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
             </section>
           }
 
-          @for (seccion of secciones; track seccion.titulo) {
+          @for (seccion of secciones(); track seccion.titulo) {
             <section class="seccion" [attr.aria-labelledby]="idSeccion($index)">
               <div class="seccion-cabecera">
                 <h2 [id]="idSeccion($index)">{{ seccion.titulo }}</h2>
@@ -423,6 +432,60 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                             }
                           </div>
                         </fieldset>
+                      }
+                      @case ('modalidad') {
+                        <!-- v1.4 §8.6 (anexo B28): dónde se atiende al paciente. -->
+                        <fieldset class="grupo" aria-describedby="modalidad-msg">
+                          <legend>
+                            {{ campo.etiqueta }}
+                            @if (insignia('modalidad'); as texto) {
+                              <span class="insignia" [attr.data-insignia]="texto">{{ texto }}</span>
+                            }
+                          </legend>
+                          <div class="hc-modalidades">
+                            @for (m of modalidades; track m.valor) {
+                              <label
+                                class="opcion hc-modalidad"
+                                [class.marcada]="datos().modalidad === m.valor"
+                              >
+                                <input type="radio" formControlName="modalidad" [value]="m.valor" />
+                                <span class="hc-modalidad-textos">
+                                  <span class="hc-modalidad-titulo">{{ m.etiqueta }}</span>
+                                  <span class="hc-modalidad-descripcion">{{ m.descripcion }}</span>
+                                </span>
+                              </label>
+                            }
+                          </div>
+                          <span id="modalidad-msg" class="mensaje">{{ ayudaModalidad() }}</span>
+                        </fieldset>
+                      }
+                      @case ('centro') {
+                        <!-- v1.4 §8.7 (anexo B29–B31): catálogo compartido de centros. -->
+                        <div class="campo">
+                          <label for="centro">
+                            {{ campo.etiqueta }}
+                            @if (insignia('idCentro'); as texto) {
+                              <span class="insignia" [attr.data-insignia]="texto">{{ texto }}</span>
+                            }
+                          </label>
+                          <app-buscador-centro
+                            idCampo="centro"
+                            descripcion="centro-msg"
+                            [centro]="centroElegido()"
+                            [invalido]="muestraError('centro')"
+                            (elegir)="elegirCentro($event)"
+                            (agregar)="nuevoCentro.set($event)"
+                          />
+                          <span
+                            id="centro-msg"
+                            [class]="muestraError('centro') ? 'mensaje mensaje--error' : 'mensaje'"
+                            >{{
+                              muestraError('centro')
+                                ? mensajeError('centro')
+                                : 'Busca el centro por su nombre. Si no está, puedes agregarlo para todos.'
+                            }}</span
+                          >
+                        </div>
                       }
                       @case ('casillas') {
                         <fieldset class="grupo" aria-describedby="fuente-msg">
@@ -529,7 +592,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
           <section class="panel">
             <div class="progreso-cabecera">
               <h2>Datos personales</h2>
-              <span class="progreso-cifra">{{ completados() }} de {{ total }}</span>
+              <span class="progreso-cifra">{{ completados() }} de {{ total() }}</span>
             </div>
             <div
               class="barra"
@@ -537,7 +600,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
               aria-label="Datos personales completados"
               [attr.aria-valuenow]="completados()"
               aria-valuemin="0"
-              [attr.aria-valuemax]="total"
+              [attr.aria-valuemax]="total()"
             >
               <div class="barra-relleno" [style.width.%]="porcentaje()"></div>
             </div>
@@ -580,6 +643,13 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
         (abrir)="abrirExistente(existente.idHistoria)"
       />
     }
+    @if (nuevoCentro(); as nombre) {
+      <app-dialogo-nuevo-centro
+        [nombreInicial]="nombre"
+        (creado)="elegirCentro($event); nuevoCentro.set(null)"
+        (cancelar)="nuevoCentro.set(null)"
+      />
+    }
     @if (propuesta(); as p) {
       <app-dialogo-autocompletar
         [origen]="p.historia"
@@ -611,8 +681,16 @@ export class PaginaFormularioHistoria {
   protected readonly tipo: TipoHistoria;
   protected readonly info: InfoTipo;
   protected readonly esAdulto: boolean;
-  protected readonly secciones: SeccionDef[];
-  protected readonly total: number;
+  /** v1.4 §8.6: las secciones cambian con la modalidad (dirección o centro). */
+  protected readonly secciones = computed<SeccionDef[]>(() =>
+    seccionesDe(this.tipo, this.datos().modalidad),
+  );
+  protected readonly total = computed(() => totalExigibles(this.tipo, this.datos().modalidad));
+  protected readonly modalidades = MODALIDADES;
+  /** B29: centro elegido en el buscador (o el guardado, al editar). */
+  protected readonly centroElegido = signal<CentroMedico | null>(null);
+  /** B31: nombre escrito para registrar un centro nuevo. */
+  protected readonly nuevoCentro = signal<string | null>(null);
   protected readonly sexos = SEXOS;
   protected readonly fuentes = ['Paciente', 'Familiar', 'Historia', 'Mixta'] as const;
   protected readonly camposRepresentante = CAMPOS_REPRESENTANTE;
@@ -665,6 +743,8 @@ export class PaginaFormularioHistoria {
     contactoTelefono: ['', [Validators.pattern(TELEFONO), Validators.maxLength(30)]],
     demandasFisicas: ['', [Validators.maxLength(1000)]],
     fuenteInformacion: [[] as string[]],
+    modalidad: ['' as '' | ModalidadAtencion],
+    idCentro: [''],
     representante: this.fb.nonNullable.group({
       parentesco: [''],
       nombre: ['', [Validators.maxLength(100)]],
@@ -710,6 +790,8 @@ export class PaginaFormularioHistoria {
       contactoTelefono: nulo(v.contactoTelefono),
       demandasFisicas: nulo(v.demandasFisicas),
       fuenteInformacion: v.fuenteInformacion,
+      modalidad: v.modalidad || null,
+      idCentro: v.modalidad === 'CENTRO' ? v.idCentro || null : null,
     };
   });
 
@@ -775,11 +857,11 @@ export class PaginaFormularioHistoria {
     camposFaltantes(this.tipo, this.datos(), this.datosRepresentante()),
   );
   protected readonly faltantesResumidos = computed(() =>
-    resumirFaltantes(this.tipo, this.faltantes()),
+    resumirFaltantes(this.tipo, this.faltantes(), this.datos().modalidad),
   );
-  protected readonly completados = computed(() => this.total - this.faltantes().length);
+  protected readonly completados = computed(() => this.total() - this.faltantes().length);
   protected readonly porcentaje = computed(() =>
-    Math.round((this.completados() / this.total) * 100),
+    Math.round((this.completados() / this.total()) * 100),
   );
 
   /** SPEC §9.2: lo que falta para poder crear la historia (espejo del backend). */
@@ -848,8 +930,7 @@ export class PaginaFormularioHistoria {
     this.tipo = this.historia?.tipo ?? (esTipoValido(parametro) ? parametro : 'TRAUMA_ADULTO');
     this.info = TIPOS[this.tipo];
     this.esAdulto = this.tipo !== 'REHAB_INFANTIL';
-    this.secciones = seccionesDe(this.tipo);
-    this.total = totalExigibles(this.tipo);
+    this.centroElegido.set(this.historia?.centro ?? null);
     this.textos = textosDelFormulario(this.historia, this.ahora);
     // §10.2: las archivadas nunca se modifican, así que no cuentan como afectadas.
     this.afectadas = this.historia?.otrasHistorias.filter((h) => !h.archivada) ?? [];
@@ -1011,6 +1092,23 @@ export class PaginaFormularioHistoria {
     return Array.isArray(antes) ? antes.join() !== (despues as string[]).join() : antes !== despues;
   }
 
+  /** B29/B31: centro elegido o recién registrado; null al pulsar "Cambiar". */
+  protected elegirCentro(centro: CentroMedico | null): void {
+    this.centroElegido.set(centro);
+    this.formulario.controls.idCentro.setValue(centro?.idCentro ?? '');
+  }
+
+  protected ayudaModalidad(): string {
+    const modalidad = this.datos().modalidad;
+    if (modalidad === 'DOMICILIO') {
+      return this.tipo === 'TRAUMA_ADULTO' || this.tipo === 'NEURO_ADULTO'
+        ? 'Registra abajo la dirección del paciente.'
+        : 'Se usará la dirección registrada del paciente.';
+    }
+    if (modalidad === 'CENTRO') return 'Elige el centro donde atiendes a este paciente.';
+    return 'Necesaria para completar los datos personales. Puedes elegirla después.';
+  }
+
   protected abrirExistente(idHistoria: string): void {
     void this.router.navigate(['/historias', idHistoria]);
   }
@@ -1085,8 +1183,12 @@ export class PaginaFormularioHistoria {
       nacionalidad: d.nacionalidad,
       cedula: d.cedula,
       sinDocumento: d.sinDocumento,
+      // v1.4 §8.6: siempre explícitos, para que al pasar de centro a domicilio
+      // (o al revés) el backend reciba también el centro vacío.
+      modalidad: d.modalidad,
+      idCentro: d.idCentro,
     };
-    for (const campo of this.secciones.flatMap((s) => s.campos)) {
+    for (const campo of this.secciones().flatMap((s) => s.campos)) {
       if (campo.clave in d && !['nombre', 'apellido'].includes(campo.clave)) {
         const clave = campo.clave as keyof DatosPersonales;
         (cuerpo as Record<string, unknown>)[clave] = d[clave];
@@ -1121,6 +1223,8 @@ export class PaginaFormularioHistoria {
       campo.tipo === 'documento' ||
       campo.tipo === 'sexo' ||
       campo.tipo === 'casillas' ||
+      campo.tipo === 'modalidad' ||
+      campo.tipo === 'centro' ||
       ('completo' in campo && !!campo.completo)
     );
   }

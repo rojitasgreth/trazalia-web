@@ -1,9 +1,13 @@
+import type { CentroMedico } from '../centros/centros.model';
+
 // Contrato de /api/v1/historias (trazalia-api, módulo historias).
 
 export type TipoHistoria = 'NEURO_ADULTO' | 'TRAUMA_ADULTO' | 'REHAB_INFANTIL' | 'ADULTO_MAYOR';
 export type EstadoHistoria = 'BORRADOR' | 'ACTIVA';
 export type Nacionalidad = 'V' | 'E';
 export type Sexo = 'FEMENINO' | 'MASCULINO';
+/** SPEC B v1.4 §8.6: dónde se atiende al paciente en esta historia. */
+export type ModalidadAtencion = 'DOMICILIO' | 'CENTRO';
 
 /** Fechas de nacimiento en ISO `AAAA-MM-DD`; vacío = null. */
 export interface DatosPersonales {
@@ -30,6 +34,9 @@ export interface DatosPersonales {
   contactoTelefono: string | null;
   demandasFisicas: string | null;
   fuenteInformacion: string[];
+  modalidad: ModalidadAtencion | null;
+  /** Centro del catálogo compartido; solo con modalidad CENTRO. */
+  idCentro: string | null;
 }
 
 export interface DatosRepresentante {
@@ -66,6 +73,7 @@ export interface HistoriaDelPaciente {
   estado: EstadoHistoria;
   archivada: boolean;
   sinDocumento: boolean;
+  modalidad: ModalidadAtencion | null;
 }
 
 export interface HistoriaDetalle extends HistoriaResumen {
@@ -76,6 +84,8 @@ export interface HistoriaDetalle extends HistoriaResumen {
   puedeIniciarValoracion: boolean;
   /** §13: con registros clínicos no se elimina; se archiva. */
   tieneRegistrosClinicos: boolean;
+  /** SPEC B v1.4 §8.7: centro de atención, si la modalidad es CENTRO. */
+  centro: CentroMedico | null;
   otrasHistorias: HistoriaDelPaciente[];
 }
 
@@ -115,7 +125,8 @@ export interface ErrorDuplicado {
 export interface ErrorValidacion {
   mensaje: string;
   errores: {
-    campo: 'nombre' | 'apellido' | 'documento' | 'fechaNacimiento' | 'representante.cedula';
+    campo:
+      'nombre' | 'apellido' | 'documento' | 'fechaNacimiento' | 'representante.cedula' | 'centro';
     mensaje: string;
   }[];
 }

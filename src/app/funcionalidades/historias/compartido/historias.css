@@ -167,3 +167,33 @@
   background: var(--color-superficie);
   color: var(--color-aviso);
 }
+
+/* Modalidad de atención (SPEC B v1.4 §8.6, anexo B28): tarjetas de opción. */
+.hc-modalidades {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 10px;
+}
+.opcion.hc-modalidad {
+  height: auto;
+  min-height: 64px;
+  align-items: flex-start;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.opcion.hc-modalidad input {
+  margin-top: 3px;
+}
+.hc-modalidad-textos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hc-modalidad-titulo {
+  font-weight: 700;
+}
+.hc-modalidad-descripcion {
+  color: var(--color-texto-secundario);
+  font-size: var(--texto-xs);
+  font-weight: 400;
+}

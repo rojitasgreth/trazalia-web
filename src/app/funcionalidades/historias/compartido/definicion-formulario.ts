@@ -1,6 +1,7 @@
 import type {
   DatosPersonales,
   DatosRepresentante,
+  ModalidadAtencion,
   TipoHistoria,
 } from '../../../core/historias/historias.model';
 
@@ -71,6 +72,8 @@ export type CampoDef =
   | { tipo: 'sexo'; clave: 'sexo'; etiqueta: string }
   | { tipo: 'casillas'; clave: 'fuenteInformacion'; etiqueta: string; ayuda: string }
   | { tipo: 'documento'; clave: 'documento'; etiqueta: string }
+  | { tipo: 'modalidad'; clave: 'modalidad'; etiqueta: string }
+  | { tipo: 'centro'; clave: 'idCentro'; etiqueta: string }
   | { tipo: 'edad'; clave: 'edad'; etiqueta: string };
 
 export interface SeccionDef {
@@ -128,8 +131,47 @@ const direccion: CampoDef[] = [
   { tipo: 'texto', clave: 'dirComunidad', etiqueta: 'Comunidad o sector', completo: true },
 ];
 
-/** SPEC §8.2–§8.5 con las secciones y textos del prototipo (B07–B10). */
-export function seccionesDe(tipo: TipoHistoria): SeccionDef[] {
+/** Modalidades de atención (SPEC v1.4 §8.6, anexo B28). */
+export const MODALIDADES = [
+  {
+    valor: 'DOMICILIO',
+    etiqueta: 'A domicilio',
+    descripcion: 'Te trasladas a donde vive el paciente.',
+  },
+  { valor: 'CENTRO', etiqueta: 'Centro médico', descripcion: 'El paciente acude a un centro.' },
+] as const;
+
+/**
+ * SPEC §8.2–§8.5 y v1.4 §8.6 (anexo B28–B30): secciones del formulario según el
+ * tipo y la modalidad. La modalidad va justo después de la identificación,
+ * porque decide si se pide la dirección del paciente o el centro médico.
+ */
+export function seccionesDe(
+  tipo: TipoHistoria,
+  modalidad: ModalidadAtencion | null = null,
+): SeccionDef[] {
+  const secciones = seccionesBase(tipo);
+  const extra: SeccionDef[] = [
+    {
+      titulo: 'Modalidad de atención',
+      campos: [
+        { tipo: 'modalidad', clave: 'modalidad', etiqueta: 'Modalidad de atención' },
+        ...(modalidad === 'CENTRO'
+          ? [{ tipo: 'centro', clave: 'idCentro', etiqueta: 'Centro médico' } as const]
+          : []),
+      ],
+    },
+  ];
+  // A domicilio se necesita la dirección; Adulto mayor e Infantil ya la piden.
+  const sinDireccion = tipo === 'TRAUMA_ADULTO' || tipo === 'NEURO_ADULTO';
+  if (modalidad === 'DOMICILIO' && sinDireccion) {
+    extra.push({ titulo: 'Dirección del paciente', campos: direccion });
+  }
+  secciones.splice(1, 0, ...extra);
+  return secciones;
+}
+
+function seccionesBase(tipo: TipoHistoria): SeccionDef[] {
   switch (tipo) {
     case 'TRAUMA_ADULTO':
       return [
@@ -294,6 +336,7 @@ export function camposFaltantes(
   datos: DatosPersonales,
   representante: DatosRepresentante | null = null,
 ): string[] {
+  const secciones = seccionesDe(tipo, datos.modalidad);
   const faltantes: string[] = [];
   // RF-015: en infantil el representante es obligatorio para completarlos.
   if (tipo === 'REHAB_INFANTIL') {
@@ -301,7 +344,7 @@ export function camposFaltantes(
       if (!representante?.[campo.clave]) faltantes.push(`representante.${campo.clave}`);
     }
   }
-  for (const seccion of seccionesDe(tipo)) {
+  for (const seccion of secciones) {
     for (const campo of seccion.campos) {
       if (NO_EXIGIBLES.has(campo.clave) || campo.clave === 'edad') continue;
       if (campo.clave === 'documento') {
@@ -318,11 +361,14 @@ export function camposFaltantes(
 }
 
 /** Total de datos exigibles del tipo (para "17 de 18"). */
-export function totalExigibles(tipo: TipoHistoria): number {
+export function totalExigibles(
+  tipo: TipoHistoria,
+  modalidad: ModalidadAtencion | null = null,
+): number {
   const representante = tipo === 'REHAB_INFANTIL' ? CAMPOS_REPRESENTANTE.length : 0;
   return (
     representante +
-    seccionesDe(tipo)
+    seccionesDe(tipo, modalidad)
       .flatMap((s) => s.campos)
       .filter((c) => !NO_EXIGIBLES.has(c.clave)).length
   );
@@ -333,7 +379,11 @@ export function totalExigibles(tipo: TipoHistoria): number {
  * resume como "Sección (n datos)"; más de 6 entradas se recortan a 5.
  * Las claves `representante.*` se agrupan bajo "Representante".
  */
-export function resumirFaltantes(tipo: TipoHistoria, claves: readonly string[]): string[] {
+export function resumirFaltantes(
+  tipo: TipoHistoria,
+  claves: readonly string[],
+  modalidad: ModalidadAtencion | null = null,
+): string[] {
   const pendientes = new Set(claves);
   const lineas: string[] = [];
 
@@ -347,7 +397,7 @@ export function resumirFaltantes(tipo: TipoHistoria, claves: readonly string[]):
     }
   }
 
-  for (const seccion of seccionesDe(tipo)) {
+  for (const seccion of seccionesDe(tipo, modalidad)) {
     const faltan = seccion.campos.filter((c) => pendientes.has(c.clave));
     if (faltan.length >= 3) lineas.push(`${seccion.titulo} (${faltan.length} datos)`);
     else lineas.push(...faltan.map(etiquetaFaltante));

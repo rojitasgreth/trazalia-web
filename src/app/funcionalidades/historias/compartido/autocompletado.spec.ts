@@ -26,6 +26,8 @@ const CARLOS_TRAUMA: DatosPersonales = {
   // El backend ya no envía los datos propios del tipo (§8.3).
   demandasFisicas: null,
   fuenteInformacion: [],
+  modalidad: null,
+  idCentro: null,
 };
 
 describe('planDeAutocompletado (SPEC §10.1)', () => {

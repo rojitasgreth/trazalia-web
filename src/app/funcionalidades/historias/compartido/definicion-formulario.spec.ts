@@ -31,6 +31,8 @@ function carlos(cambios: Partial<DatosPersonales> = {}): DatosPersonales {
     contactoTelefono: '0414-555-2290',
     demandasFisicas: 'Oficina',
     fuenteInformacion: [],
+    modalidad: 'CENTRO',
+    idCentro: 'c1',
     ...cambios,
   };
 }
@@ -75,9 +77,13 @@ describe('definición del formulario por tipo (SPEC §8)', () => {
   });
 
   it('cuenta los datos exigibles sin nombre, apellido, edad ni correo', () => {
-    expect(totalExigibles('TRAUMA_ADULTO')).toBe(10);
-    // Infantil: 8 propios + 8 del representante (RF-015).
-    expect(totalExigibles('REHAB_INFANTIL')).toBe(16);
+    // v1.4: + modalidad; + centro (en centro) o + dirección (a domicilio, Trauma/Neuro).
+    expect(totalExigibles('TRAUMA_ADULTO')).toBe(11);
+    expect(totalExigibles('TRAUMA_ADULTO', 'CENTRO')).toBe(12);
+    expect(totalExigibles('TRAUMA_ADULTO', 'DOMICILIO')).toBe(15);
+    // Infantil: 9 propios + 8 del representante (RF-015); ya pide la dirección.
+    expect(totalExigibles('REHAB_INFANTIL')).toBe(17);
+    expect(totalExigibles('REHAB_INFANTIL', 'DOMICILIO')).toBe(17);
   });
 
   it('resume los faltantes por sección y recorta las listas largas', () => {
