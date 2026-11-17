@@ -52,4 +52,12 @@ describe('HistoriasApi', () => {
     expect(peticion.request.body).toEqual(cuerpo);
     peticion.flush({ historia: {} });
   });
+
+  it('coincidencias es POST /historias/coincidencias', () => {
+    api.coincidencias({ tipo: 'NEURO_ADULTO', nacionalidad: 'V', cedula: '1' }).subscribe();
+    const peticion = http.expectOne('/api/v1/historias/coincidencias');
+    expect(peticion.request.method).toBe('POST');
+    expect(peticion.request.body).toEqual({ tipo: 'NEURO_ADULTO', nacionalidad: 'V', cedula: '1' });
+    peticion.flush({ resultado: 'ninguna' });
+  });
 });

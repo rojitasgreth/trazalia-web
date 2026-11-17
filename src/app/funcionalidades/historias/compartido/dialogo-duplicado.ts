@@ -1,5 +1,5 @@
 import { Component, computed, input, output } from '@angular/core';
-import type { HistoriaDetalle } from '../../../core/historias/historias.model';
+import type { HistoriaResumen } from '../../../core/historias/historias.model';
 import { DialogoHistoria } from './dialogo-historia';
 import { TIPOS, etiquetaEstado, formatearDocumento, formatearMomentoEnFrase } from './presentacion';
 
@@ -64,7 +64,7 @@ import { TIPOS, etiquetaEstado, formatearDocumento, formatearMomentoEnFrase } fr
   `,
 })
 export class DialogoDuplicado {
-  readonly historia = input.required<HistoriaDetalle>();
+  readonly historia = input.required<HistoriaResumen>();
   readonly volver = output<void>();
   readonly abrir = output<void>();
 

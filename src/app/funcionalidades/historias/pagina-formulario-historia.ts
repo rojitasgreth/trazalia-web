@@ -16,7 +16,7 @@ import type {
   DatosRepresentante,
   ErrorDuplicado,
   ErrorValidacion,
-  HistoriaDetalle,
+  HistoriaResumen,
   TipoHistoria,
 } from '../../core/historias/historias.model';
 import {
@@ -30,10 +30,27 @@ import {
   type CampoDef,
   type SeccionDef,
 } from './compartido/definicion-formulario';
+import {
+  enumerar,
+  planDeAutocompletado,
+  type PlanAutocompletado,
+} from './compartido/autocompletado';
+import { DialogoAutocompletar } from './compartido/dialogo-autocompletar';
 import { DialogoDuplicado } from './compartido/dialogo-duplicado';
-import { TIPOS, calcularEdad, esTipoValido, type InfoTipo } from './compartido/presentacion';
+import {
+  TIPOS,
+  calcularEdad,
+  esTipoValido,
+  formatearDocumento,
+  type InfoTipo,
+} from './compartido/presentacion';
 
 type CampoIdentificacion = ErrorValidacion['errores'][number]['campo'];
+
+interface Propuesta {
+  historia: HistoriaResumen;
+  plan: PlanAutocompletado;
+}
 
 const TELEFONO = /^[\d\s+()-]*$/;
 
@@ -66,7 +83,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
 /** B07–B12, B19 · Nueva historia: datos personales según el tipo (SPEC §8–§9). */
 @Component({
   selector: 'app-pagina-formulario-historia',
-  imports: [ReactiveFormsModule, RouterLink, DialogoDuplicado],
+  imports: [ReactiveFormsModule, RouterLink, DialogoDuplicado, DialogoAutocompletar],
   template: `
     <div class="pagina">
       <header class="cabecera">
@@ -76,32 +93,39 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
           <span class="hc-chip" data-estado="borrador">Borrador</span>
         </div>
         <p class="subtitulo">
-          <span class="hc-punto" [attr.data-tipo]="tipo"></span>{{ info.nombre }} · se guardará como
-          borrador
+          <span class="hc-punto" [attr.data-tipo]="tipo"></span>{{ info.nombre }} ·
+          {{ subtitulo() }}
         </p>
       </header>
 
       @if (errorGuardado()) {
-        <div class="banner banner--error" role="alert">
-          <div class="banner-texto">
+        <div class="hc-banner" data-variante="error" role="alert">
+          <div class="hc-banner-texto">
             <strong>No pudimos guardar la historia</strong>
             <span
               >Revisa tu conexión e inténtalo de nuevo. Lo que escribiste sigue en el
               formulario.</span
             >
           </div>
-          <button type="button" class="banner-boton" (click)="guardar()">Reintentar</button>
+          <button type="button" class="hc-banner-boton" (click)="guardar()">Reintentar</button>
         </div>
       } @else if (intentado() && erroresIdentificacion().length > 0) {
-        <div class="banner banner--aviso" role="alert">
-          <div class="banner-texto">
+        <div class="hc-banner" data-variante="aviso" role="alert">
+          <div class="hc-banner-texto">
             <strong>{{ tituloValidacion() }}</strong>
             <span>{{ textoValidacion() }}</span>
           </div>
         </div>
+      } @else if (autocompletado(); as auto) {
+        <div class="hc-banner" data-variante="auto" role="status">
+          <div class="hc-banner-texto">
+            <strong>Usamos los datos de su historia de {{ auto.tipoOrigen }}</strong>
+            <span>{{ auto.texto }}</span>
+          </div>
+        </div>
       } @else if (!esAdulto && !datosRepresentante()) {
-        <div class="banner banner--aviso" role="status">
-          <div class="banner-texto">
+        <div class="hc-banner" data-variante="aviso" role="status">
+          <div class="hc-banner-texto">
             <strong>Puedes guardar sin representante</strong>
             <span
               >La historia se guardará como borrador, pero no podrás iniciar la valoración hasta
@@ -110,8 +134,8 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
           </div>
         </div>
       } @else if (sinDocumento()) {
-        <div class="banner banner--info" role="status">
-          <div class="banner-texto">
+        <div class="hc-banner" data-variante="info" role="status">
+          <div class="hc-banner-texto">
             <strong>Niño o niña sin documento</strong>
             <span
               >La nacionalidad quedó pendiente. Podrás agregar la cédula cuando la tenga, editando
@@ -122,7 +146,13 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
       }
 
       <div class="cuerpo">
-        <form id="formulario-historia" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+        <form
+          id="formulario-historia"
+          [formGroup]="formulario"
+          (ngSubmit)="guardar()"
+          (focusout)="consultarCoincidencias()"
+          novalidate
+        >
           <p class="nota-obligatorio">
             <span class="asterisco">*</span> Obligatorio para crear la historia. Lo demás puede
             completarse después.
@@ -238,6 +268,9 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                             @if (esAdulto) {
                               <span class="asterisco"> *</span>
                             }
+                            @if (insignia('documento'); as texto) {
+                              <span class="insignia" [attr.data-insignia]="texto">{{ texto }}</span>
+                            }
                           </legend>
                           <div class="documento">
                             <label for="nacionalidad" class="hc-solo-lector">Nacionalidad</label>
@@ -246,6 +279,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                               formControlName="nacionalidad"
                               class="nacionalidad"
                               [class.invalido]="muestraError('documento')"
+                              [attr.data-insignia]="insignia('documento') || null"
                             >
                               <option value="">
                                 {{ esAdulto ? 'Nacionalidad' : 'Pendiente' }}
@@ -263,6 +297,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                               [attr.aria-invalid]="muestraError('documento')"
                               aria-describedby="documento-msg"
                               [class.invalido]="muestraError('documento')"
+                              [attr.data-insignia]="insignia('documento') || null"
                             />
                             @if (!esAdulto) {
                               <label class="opcion" [class.marcada]="sinDocumento()">
@@ -299,7 +334,12 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                       }
                       @case ('sexo') {
                         <fieldset class="grupo">
-                          <legend>Sexo</legend>
+                          <legend>
+                            Sexo
+                            @if (insignia('sexo'); as texto) {
+                              <span class="insignia" [attr.data-insignia]="texto">{{ texto }}</span>
+                            }
+                          </legend>
                           <div class="opciones">
                             @for (s of sexos; track s.valor) {
                               <label class="opcion" [class.marcada]="valor('sexo') === s.valor">
@@ -330,8 +370,17 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                       }
                       @case ('seleccion') {
                         <div class="campo">
-                          <label [for]="campo.clave">{{ campo.etiqueta }}</label>
-                          <select [id]="campo.clave" [formControlName]="campo.clave">
+                          <label [for]="campo.clave">
+                            {{ campo.etiqueta }}
+                            @if (insignia(campo.clave); as texto) {
+                              <span class="insignia" [attr.data-insignia]="texto">{{ texto }}</span>
+                            }
+                          </label>
+                          <select
+                            [id]="campo.clave"
+                            [formControlName]="campo.clave"
+                            [attr.data-insignia]="insignia(campo.clave) || null"
+                          >
                             <option value="">Selecciona</option>
                             @for (opcion of opciones(campo); track opcion) {
                               <option [value]="opcion">{{ opcion }}</option>
@@ -346,11 +395,15 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                             @if (obligatorio(campo)) {
                               <span class="asterisco"> *</span>
                             }
+                            @if (insignia(campo.clave); as texto) {
+                              <span class="insignia" [attr.data-insignia]="texto">{{ texto }}</span>
+                            }
                           </label>
                           <input
                             [id]="campo.clave"
                             [type]="tipoInput(campo)"
                             [formControlName]="campo.clave"
+                            [attr.data-insignia]="insignia(campo.clave) || null"
                             [placeholder]="placeholder(campo)"
                             [attr.max]="campo.tipo === 'fecha' ? hoy : null"
                             [attr.aria-invalid]="
@@ -453,6 +506,15 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
         (abrir)="abrirExistente(existente.idHistoria)"
       />
     }
+    @if (propuesta(); as p) {
+      <app-dialogo-autocompletar
+        [origen]="p.historia"
+        [tipoDestino]="tipo"
+        [filas]="p.plan.filas"
+        (usar)="usarAutocompletado()"
+        (enBlanco)="propuesta.set(null)"
+      />
+    }
   `,
   styleUrl: './pagina-formulario-historia.css',
 })
@@ -478,7 +540,13 @@ export class PaginaFormularioHistoria {
   protected readonly intentado = signal(false);
   protected readonly errorGuardado = signal(false);
   protected readonly erroresServidor = signal<Partial<Record<CampoIdentificacion, string>>>({});
-  protected readonly duplicada = signal<HistoriaDetalle | null>(null);
+  protected readonly duplicada = signal<HistoriaResumen | null>(null);
+
+  // B14/B15: autocompletado con otra historia del mismo paciente (§10.1).
+  protected readonly propuesta = signal<Propuesta | null>(null);
+  private readonly aplicado = signal<Propuesta | null>(null);
+  private readonly autocompletados = signal<ReadonlySet<string>>(new Set());
+  private ultimaConsulta: string | null = null;
 
   protected readonly formulario = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.maxLength(100)]],
@@ -577,6 +645,29 @@ export class PaginaFormularioHistoria {
   );
 
   protected readonly sinDocumento = computed(() => this.datos().sinDocumento);
+
+  protected readonly subtitulo = computed(() => {
+    const origen = this.aplicado()?.historia;
+    return origen
+      ? `${origen.nombre} ${origen.apellido} · ${formatearDocumento(origen)}`
+      : 'se guardará como borrador';
+  });
+
+  /** B15: aviso de qué se copió y qué hay que completar porque no existía. */
+  protected readonly autocompletado = computed(() => {
+    const aplicado = this.aplicado();
+    if (!aplicado) return null;
+    const ausentes = aplicado.plan.ausentes;
+    const resto = ausentes.length
+      ? ` ${enumerar(ausentes)} no ${ausentes.length === 1 ? 'existe' : 'existen'} en esa historia: ${
+          ausentes.length === 1 ? 'complétalo' : 'complétalos'
+        } aquí.`
+      : '';
+    return {
+      tipoOrigen: TIPOS[aplicado.historia.tipo].nombre,
+      texto: `Los campos en verde se copiaron y puedes editarlos.${resto}`,
+    };
+  });
   protected readonly edad = computed(() => calcularEdad(this.datos().fechaNacimiento, this.ahora));
   protected readonly faltantes = computed(() =>
     camposFaltantes(this.tipo, this.datos(), this.datosRepresentante()),
@@ -695,6 +786,70 @@ export class PaginaFormularioHistoria {
         this.manejarError(error);
       },
     });
+  }
+
+  /**
+   * B13/B14: al salir de un campo, si ya hay datos para identificar al
+   * paciente (documento, o nombre + apellido + nacimiento sin documento), se
+   * consulta una sola vez por combinación.
+   */
+  protected consultarCoincidencias(): void {
+    const d = this.datos();
+    const clave =
+      d.nacionalidad && d.cedula && /^\d{1,9}$/.test(d.cedula)
+        ? `doc:${d.nacionalidad}${d.cedula}`
+        : d.sinDocumento && d.nombre && d.apellido && d.fechaNacimiento
+          ? `nom:${d.nombre}|${d.apellido}|${d.fechaNacimiento}`.toLowerCase()
+          : null;
+    if (!clave || clave === this.ultimaConsulta) return;
+    this.ultimaConsulta = clave;
+
+    this.api
+      .coincidencias({
+        tipo: this.tipo,
+        nombre: d.nombre,
+        apellido: d.apellido,
+        nacionalidad: d.nacionalidad,
+        cedula: d.cedula,
+        sinDocumento: d.sinDocumento,
+        fechaNacimiento: d.fechaNacimiento,
+      })
+      .subscribe({
+        next: (r) => {
+          if (r.resultado === 'duplicado') this.duplicada.set(r.historia);
+          if (r.resultado === 'autocompletar' && !this.aplicado()) {
+            const plan = planDeAutocompletado(
+              this.tipo,
+              r.historia.tipo,
+              r.datos,
+              formatearDocumento(r.historia),
+            );
+            this.propuesta.set({ historia: r.historia, plan });
+          }
+        },
+        // Es solo una ayuda: si falla, el duplicado lo frena igual el backend al guardar.
+        error: () => (this.ultimaConsulta = null),
+      });
+  }
+
+  /** RF-012/RF-013: copia los datos y los deja editables, marcados en verde. */
+  protected usarAutocompletado(): void {
+    const propuesta = this.propuesta();
+    if (!propuesta) return;
+    const valores = Object.fromEntries(
+      Object.entries(propuesta.plan.valores).map(([clave, valor]) => [clave, valor ?? '']),
+    );
+    this.formulario.patchValue(valores);
+    const claves = new Set(Object.keys(valores));
+    if (claves.has('cedula') || claves.has('sinDocumento')) claves.add('documento');
+    this.autocompletados.set(claves);
+    this.aplicado.set(propuesta);
+    this.propuesta.set(null);
+  }
+
+  /** Insignia junto a la etiqueta del campo (B15: "Autocompletado"). */
+  protected insignia(clave: string): string {
+    return this.autocompletados().has(clave) ? 'Autocompletado' : '';
   }
 
   protected abrirExistente(idHistoria: string): void {

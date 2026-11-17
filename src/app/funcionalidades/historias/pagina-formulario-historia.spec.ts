@@ -223,7 +223,7 @@ describe('PaginaFormularioHistoria', () => {
     expect(elemento().textContent).toContain('No pudimos guardar la historia');
     expect((elemento().querySelector('#nombre') as HTMLInputElement).value).toBe('Carlos');
 
-    elemento().querySelector<HTMLButtonElement>('.banner-boton')!.click();
+    elemento().querySelector<HTMLButtonElement>('.hc-banner-boton')!.click();
     http.expectOne('/api/v1/historias').flush({ historia: { idHistoria: 'h3' } });
   });
 
@@ -318,5 +318,117 @@ describe('PaginaFormularioHistoria', () => {
       'La cédula del representante debe contener solo dígitos, máximo 9.',
     );
     http.expectNone('/api/v1/historias');
+  });
+
+  function salirDeCampo() {
+    elemento().querySelector('form')!.dispatchEvent(new FocusEvent('focusout'));
+  }
+
+  it('B14/B15/AC-007: ofrece autocompletar con otra historia del paciente y marca lo copiado', async () => {
+    const pagina = await abrir('NEURO_ADULTO');
+    rellenar(pagina, { nacionalidad: 'V', cedula: '15.482.301' });
+
+    salirDeCampo();
+    const consulta = http.expectOne('/api/v1/historias/coincidencias');
+    expect(consulta.request.body).toMatchObject({
+      tipo: 'NEURO_ADULTO',
+      nacionalidad: 'V',
+      cedula: '15482301',
+    });
+    consulta.flush({
+      resultado: 'autocompletar',
+      historia: { ...EXISTENTE, tipo: 'TRAUMA_ADULTO' },
+      datos: {
+        nombre: 'Carlos',
+        apellido: 'Andrade',
+        nacionalidad: 'V',
+        cedula: '15482301',
+        sinDocumento: false,
+        fechaNacimiento: '1985-03-14',
+        sexo: 'MASCULINO',
+        dominancia: 'Diestro(a)',
+        ocupacion: 'Contador',
+        nivelEducativo: null,
+        estadoCivil: null,
+        lugarNacimiento: null,
+        telefono: '0412-555-0134',
+        correo: null,
+        dirEstado: null,
+        dirMunicipio: null,
+        dirParroquia: null,
+        dirComunidad: null,
+        contactoNombre: 'Patricia Andrade',
+        contactoParentesco: 'Esposa',
+        contactoTelefono: '0414-555-2290',
+        demandasFisicas: null,
+        fuenteInformacion: [],
+      },
+    });
+    await harness.fixture.whenStable();
+    harness.fixture.detectChanges();
+
+    const dialogo = elemento().querySelector('[role="dialog"]')!;
+    expect(dialogo.textContent).toContain('Encontramos otra historia de este paciente');
+    expect(dialogo.textContent).toContain('tiene una historia de Traumatología del adulto');
+    expect(dialogo.textContent).toContain('No existe en esa historia');
+
+    Array.from(dialogo.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Usar estos datos'))!
+      .click();
+    harness.fixture.detectChanges();
+
+    expect((elemento().querySelector('#nombre') as HTMLInputElement).value).toBe('Carlos');
+    expect((elemento().querySelector('#telefono') as HTMLInputElement).value).toBe('0412-555-0134');
+    expect(elemento().querySelector('[role="status"]')?.textContent).toContain(
+      'Usamos los datos de su historia de Traumatología del adulto',
+    );
+    expect(elemento().textContent).toContain(
+      'Fuente de información y Nivel educativo no existen en esa historia',
+    );
+    expect(elemento().querySelector('#telefono')?.getAttribute('data-insignia')).toBe(
+      'Autocompletado',
+    );
+    expect(elemento().textContent).toContain('Carlos Andrade · V-15.482.301');
+
+    // Misma combinación: no se vuelve a consultar.
+    salirDeCampo();
+    http.expectNone('/api/v1/historias/coincidencias');
+  });
+
+  it('B13: un duplicado detectado al salir del campo se avisa antes de guardar', async () => {
+    const pagina = await abrir();
+    rellenar(pagina, { nacionalidad: 'V', cedula: '15482301' });
+
+    salirDeCampo();
+    http
+      .expectOne('/api/v1/historias/coincidencias')
+      .flush({ resultado: 'duplicado', historia: EXISTENTE });
+    await harness.fixture.whenStable();
+    harness.fixture.detectChanges();
+
+    expect(elemento().querySelector('[role="dialog"]')?.textContent).toContain(
+      'Este paciente ya tiene una historia de Traumatología del adulto',
+    );
+  });
+
+  it('"Empezar en blanco" cierra la propuesta sin copiar nada', async () => {
+    const pagina = await abrir('NEURO_ADULTO');
+    rellenar(pagina, { nacionalidad: 'V', cedula: '15482301' });
+    salirDeCampo();
+    http.expectOne('/api/v1/historias/coincidencias').flush({
+      resultado: 'autocompletar',
+      historia: { ...EXISTENTE, tipo: 'TRAUMA_ADULTO' },
+      datos: { nombre: 'Carlos', apellido: 'Andrade', fuenteInformacion: [] },
+    });
+    await harness.fixture.whenStable();
+    harness.fixture.detectChanges();
+
+    Array.from(elemento().querySelectorAll('[role="dialog"] button'))
+      .find((b) => b.textContent?.includes('Empezar en blanco'))!
+      .dispatchEvent(new Event('click'));
+    harness.fixture.detectChanges();
+
+    expect(elemento().querySelector('[role="dialog"]')).toBeNull();
+    expect((elemento().querySelector('#nombre') as HTMLInputElement).value).toBe('');
   });
 });

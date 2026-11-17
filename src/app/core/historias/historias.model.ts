@@ -116,3 +116,19 @@ export interface ErrorValidacion {
     mensaje: string;
   }[];
 }
+
+/** POST /historias/coincidencias (B13/B14). */
+export interface ConsultaCoincidencias {
+  tipo: TipoHistoria;
+  nombre?: string;
+  apellido?: string;
+  nacionalidad?: Nacionalidad | null;
+  cedula?: string | null;
+  sinDocumento?: boolean;
+  fechaNacimiento?: string | null;
+}
+
+export type ResultadoCoincidencia =
+  | { resultado: 'ninguna' }
+  | { resultado: 'duplicado'; historia: HistoriaResumen }
+  | { resultado: 'autocompletar'; historia: HistoriaResumen; datos: DatosPersonales };
