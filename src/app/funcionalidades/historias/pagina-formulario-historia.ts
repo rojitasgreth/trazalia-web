@@ -436,7 +436,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                       @case ('modalidad') {
                         <!-- v1.4 §8.6 (anexo B28): dónde se atiende al paciente. -->
                         <fieldset class="grupo" aria-describedby="modalidad-msg">
-                          <legend>
+                          <legend class="hc-solo-lector-leyenda">
                             {{ campo.etiqueta }}
                             @if (insignia('modalidad'); as texto) {
                               <span class="insignia" [attr.data-insignia]="texto">{{ texto }}</span>

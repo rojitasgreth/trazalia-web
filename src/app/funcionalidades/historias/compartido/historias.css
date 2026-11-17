@@ -197,3 +197,13 @@
   font-size: var(--texto-xs);
   font-weight: 400;
 }
+
+/* La sección ya titula "Modalidad de atención"; la leyenda queda para lectores de pantalla.
+   La insignia "Modificado" de la leyenda sigue visible. */
+.hc-solo-lector-leyenda {
+  padding: 0 !important;
+  font-size: 0;
+}
+.hc-solo-lector-leyenda .insignia {
+  font-size: 11px;
+}
