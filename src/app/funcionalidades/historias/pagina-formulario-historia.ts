@@ -13,12 +13,15 @@ import { HistoriasApi } from '../../core/historias/historias-api';
 import type {
   CrearHistoriaPayload,
   DatosPersonales,
+  DatosRepresentante,
   ErrorDuplicado,
   ErrorValidacion,
   HistoriaDetalle,
   TipoHistoria,
 } from '../../core/historias/historias.model';
 import {
+  CAMPOS_REPRESENTANTE,
+  PARENTESCOS,
   SEXOS,
   camposFaltantes,
   resumirFaltantes,
@@ -41,6 +44,7 @@ const MENSAJES: Record<CampoIdentificacion, string> = {
   documento:
     'Escribe la nacionalidad y el número de cédula. Son obligatorios para crear la historia.',
   fechaNacimiento: 'Escribe la fecha de nacimiento. Sin documento, es obligatoria.',
+  'representante.cedula': 'La cédula del representante debe contener solo dígitos, máximo 9.',
 };
 
 const NOMBRES_FALTANTE: Record<CampoIdentificacion, string> = {
@@ -48,6 +52,7 @@ const NOMBRES_FALTANTE: Record<CampoIdentificacion, string> = {
   apellido: 'el apellido',
   documento: 'la cédula',
   fechaNacimiento: 'la fecha de nacimiento',
+  'representante.cedula': 'una cédula válida del representante',
 };
 
 function hoyIso(): string {
@@ -94,6 +99,26 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
             <span>{{ textoValidacion() }}</span>
           </div>
         </div>
+      } @else if (!esAdulto && !datosRepresentante()) {
+        <div class="banner banner--aviso" role="status">
+          <div class="banner-texto">
+            <strong>Puedes guardar sin representante</strong>
+            <span
+              >La historia se guardará como borrador, pero no podrás iniciar la valoración hasta
+              registrar al representante.</span
+            >
+          </div>
+        </div>
+      } @else if (sinDocumento()) {
+        <div class="banner banner--info" role="status">
+          <div class="banner-texto">
+            <strong>Niño o niña sin documento</strong>
+            <span
+              >La nacionalidad quedó pendiente. Podrás agregar la cédula cuando la tenga, editando
+              la historia.</span
+            >
+          </div>
+        </div>
       }
 
       <div class="cuerpo">
@@ -102,6 +127,97 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
             <span class="asterisco">*</span> Obligatorio para crear la historia. Lo demás puede
             completarse después.
           </p>
+
+          @if (!esAdulto) {
+            <!-- RF-027: el representante se pide antes que los datos del niño o niña. -->
+            <section
+              class="seccion"
+              formGroupName="representante"
+              aria-labelledby="seccion-representante"
+            >
+              <div class="seccion-cabecera">
+                <h2 id="seccion-representante">Representante</h2>
+                <span class="seccion-nota seccion-nota--aviso"
+                  >Obligatorio antes de iniciar la valoración</span
+                >
+              </div>
+              <p class="seccion-descripcion">
+                Empieza por los datos de quien representa al niño o niña.
+              </p>
+              <div class="rejilla">
+                @for (campo of camposRepresentante; track campo.clave) {
+                  <div class="campo">
+                    <label [for]="'representante-' + campo.clave">{{ campo.etiqueta }}</label>
+                    @switch (campo.tipo) {
+                      @case ('parentesco') {
+                        <select
+                          [id]="'representante-' + campo.clave"
+                          [formControlName]="campo.clave"
+                        >
+                          <option value="">Selecciona</option>
+                          @for (p of parentescos; track p.valor) {
+                            <option [value]="p.valor">{{ p.etiqueta }}</option>
+                          }
+                        </select>
+                      }
+                      @case ('seleccion') {
+                        <select
+                          [id]="'representante-' + campo.clave"
+                          [formControlName]="campo.clave"
+                        >
+                          <option value="">Selecciona</option>
+                          @for (opcion of campo.opciones; track opcion) {
+                            <option [value]="opcion">{{ opcion }}</option>
+                          }
+                        </select>
+                      }
+                      @default {
+                        <input
+                          [id]="'representante-' + campo.clave"
+                          [type]="campo.tipo === 'fecha' ? 'date' : 'text'"
+                          [formControlName]="campo.clave"
+                          [placeholder]="campo.placeholder ?? ''"
+                          [attr.max]="campo.tipo === 'fecha' ? hoy : null"
+                          [attr.inputmode]="campo.clave === 'cedula' ? 'numeric' : null"
+                          [attr.aria-invalid]="
+                            campo.clave === 'cedula' && muestraError('representante.cedula')
+                          "
+                          [attr.aria-describedby]="
+                            campo.clave === 'cedula' ? 'representante-cedula-msg' : null
+                          "
+                          [class.invalido]="
+                            campo.clave === 'cedula' && muestraError('representante.cedula')
+                          "
+                        />
+                        @if (campo.clave === 'cedula' && muestraError('representante.cedula')) {
+                          <span id="representante-cedula-msg" class="mensaje mensaje--error">{{
+                            mensajeError('representante.cedula')
+                          }}</span>
+                        }
+                      }
+                    }
+                  </div>
+                  @if (campo.clave === 'fechaNacimiento') {
+                    <div class="campo">
+                      <label for="representante-edad">Edad</label>
+                      <input
+                        id="representante-edad"
+                        type="text"
+                        readonly
+                        class="calculado"
+                        placeholder="—"
+                        [value]="edadRepresentante()"
+                        aria-describedby="representante-edad-msg"
+                      />
+                      <span id="representante-edad-msg" class="mensaje"
+                        >Se calcula con la fecha de nacimiento.</span
+                      >
+                    </div>
+                  }
+                }
+              </div>
+            </section>
+          }
 
           @for (seccion of secciones; track seccion.titulo) {
             <section class="seccion" [attr.aria-labelledby]="idSeccion($index)">
@@ -309,8 +425,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
               </div>
             }
             <p class="nota-valoracion">
-              La primera valoración se habilita cuando los datos personales estén completos. Al
-              completarla, la historia pasa a Activa.
+              {{ notaValoracion }}
             </p>
           </section>
         </aside>
@@ -353,6 +468,9 @@ export class PaginaFormularioHistoria {
   protected readonly total: number;
   protected readonly sexos = SEXOS;
   protected readonly fuentes = ['Paciente', 'Familiar', 'Historia', 'Mixta'] as const;
+  protected readonly camposRepresentante = CAMPOS_REPRESENTANTE;
+  protected readonly parentescos = PARENTESCOS;
+  protected readonly notaValoracion: string;
   protected readonly hoy = hoyIso();
   private readonly ahora = new Date();
 
@@ -386,6 +504,16 @@ export class PaginaFormularioHistoria {
     contactoTelefono: ['', [Validators.pattern(TELEFONO), Validators.maxLength(30)]],
     demandasFisicas: ['', [Validators.maxLength(1000)]],
     fuenteInformacion: [[] as string[]],
+    representante: this.fb.nonNullable.group({
+      parentesco: [''],
+      nombre: ['', [Validators.maxLength(100)]],
+      apellido: ['', [Validators.maxLength(100)]],
+      cedula: [''],
+      fechaNacimiento: ['', [fechaNoFutura]],
+      estadoCivil: [''],
+      gradoInstruccion: [''],
+      ocupacion: ['', [Validators.maxLength(150)]],
+    }),
   });
 
   private readonly valores = toSignal(this.formulario.valueChanges, {
@@ -424,9 +552,35 @@ export class PaginaFormularioHistoria {
     };
   });
 
+  /** SPEC §8.4: representante normalizado; sin ningún dato equivale a no tenerlo. */
+  protected readonly datosRepresentante = computed<DatosRepresentante | null>(() => {
+    if (this.esAdulto) return null;
+    const r = {
+      ...this.formulario.controls.representante.getRawValue(),
+      ...this.valores().representante,
+    };
+    const representante: DatosRepresentante = {
+      parentesco: (r.parentesco || null) as DatosRepresentante['parentesco'],
+      nombre: r.nombre?.trim() || null,
+      apellido: r.apellido?.trim() || null,
+      cedula: r.cedula?.replace(/\D/g, '') || null,
+      fechaNacimiento: r.fechaNacimiento || null,
+      estadoCivil: r.estadoCivil || null,
+      gradoInstruccion: r.gradoInstruccion || null,
+      ocupacion: r.ocupacion?.trim() || null,
+    };
+    return Object.values(representante).some((valor) => valor !== null) ? representante : null;
+  });
+
+  protected readonly edadRepresentante = computed(() =>
+    calcularEdad(this.datosRepresentante()?.fechaNacimiento ?? null, this.ahora),
+  );
+
   protected readonly sinDocumento = computed(() => this.datos().sinDocumento);
   protected readonly edad = computed(() => calcularEdad(this.datos().fechaNacimiento, this.ahora));
-  protected readonly faltantes = computed(() => camposFaltantes(this.tipo, this.datos()));
+  protected readonly faltantes = computed(() =>
+    camposFaltantes(this.tipo, this.datos(), this.datosRepresentante()),
+  );
   protected readonly faltantesResumidos = computed(() =>
     resumirFaltantes(this.tipo, this.faltantes()),
   );
@@ -446,6 +600,10 @@ export class PaginaFormularioHistoria {
       errores.push('documento');
     }
     if (d.sinDocumento && !d.fechaNacimiento) errores.push('fechaNacimiento');
+    const cedulaRepresentante = this.datosRepresentante()?.cedula;
+    if (cedulaRepresentante && !/^\d{1,9}$/.test(cedulaRepresentante)) {
+      errores.push('representante.cedula');
+    }
     for (const campo of Object.keys(this.erroresServidor()) as CampoIdentificacion[]) {
       if (!errores.includes(campo)) errores.push(campo);
     }
@@ -496,6 +654,9 @@ export class PaginaFormularioHistoria {
     this.esAdulto = this.tipo !== 'REHAB_INFANTIL';
     this.secciones = seccionesDe(this.tipo);
     this.total = totalExigibles(this.tipo);
+    this.notaValoracion = this.esAdulto
+      ? 'La primera valoración se habilita cuando los datos personales estén completos. Al completarla, la historia pasa a Activa.'
+      : 'La primera valoración se habilita cuando los datos personales estén completos y el representante esté registrado.';
 
     this.formulario.controls.sinDocumento.valueChanges.subscribe((marcado) => {
       const { cedula, nacionalidad } = this.formulario.controls;
@@ -580,6 +741,7 @@ export class PaginaFormularioHistoria {
         (cuerpo as Record<string, unknown>)[clave] = d[clave];
       }
     }
+    if (!this.esAdulto) cuerpo.representante = this.datosRepresentante();
     return cuerpo;
   }
 
@@ -654,6 +816,10 @@ export class PaginaFormularioHistoria {
       if (campo.tipo === 'tel') return 'El teléfono solo admite dígitos, espacios y + ( ) -.';
     }
     return this.ayuda(campo);
+  }
+
+  protected mensajeError(campo: CampoIdentificacion): string {
+    return this.erroresServidor()[campo] ?? MENSAJES[campo];
   }
 
   protected mensajeDocumento(): string {

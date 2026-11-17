@@ -373,3 +373,21 @@ input:disabled {
     justify-content: center;
   }
 }
+.banner--info {
+  border: 1px solid var(--color-info-borde);
+  background: var(--color-info-fondo);
+  color: var(--color-info);
+}
+.seccion-nota--aviso {
+  padding: 4px 10px;
+  border-radius: var(--radio-pildora);
+  background: var(--color-aviso-fondo);
+  color: var(--color-aviso-intenso);
+  font-size: 12px;
+  font-weight: 700;
+}
+.seccion-descripcion {
+  margin: -8px 0 0;
+  color: var(--color-texto-secundario);
+  font-size: var(--texto-s);
+}

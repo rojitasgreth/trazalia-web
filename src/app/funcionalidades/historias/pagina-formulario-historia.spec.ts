@@ -236,4 +236,87 @@ describe('PaginaFormularioHistoria', () => {
     expect(elemento().textContent).toContain('El teléfono solo admite dígitos');
     http.expectNone('/api/v1/historias');
   });
+
+  it('B10/AC-018: en infantil pide primero el representante y permite guardar sin él', async () => {
+    const pagina = await abrir('REHAB_INFANTIL');
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const titulos = Array.from(elemento().querySelectorAll('.seccion h2')).map(
+      (h) => h.textContent,
+    );
+    expect(titulos[0]).toBe('Representante');
+    expect(titulos[1]).toBe('Niño o niña');
+    expect(elemento().textContent).toContain('Puedes guardar sin representante');
+    expect(elemento().textContent).toContain('0 de 16');
+
+    // RF-004: sin documento exige la fecha de nacimiento.
+    rellenar(pagina, { nombre: 'Sofía', apellido: 'Martínez', sinDocumento: true });
+    expect((elemento().querySelector('#cedula') as HTMLInputElement).disabled).toBe(true);
+    await enviar();
+    expect(elemento().querySelector('[role="alert"]')?.textContent).toContain(
+      'Escribe la fecha de nacimiento.',
+    );
+    http.expectNone('/api/v1/historias');
+
+    rellenar(pagina, { fechaNacimiento: '2022-06-10' });
+    await enviar();
+    const peticion = http.expectOne('/api/v1/historias');
+    expect(peticion.request.body).toMatchObject({
+      tipo: 'REHAB_INFANTIL',
+      sinDocumento: true,
+      nacionalidad: null,
+      cedula: null,
+      representante: null,
+    });
+    peticion.flush({ historia: { idHistoria: 'h4' } });
+  });
+
+  it('RF-015: envía el representante normalizado y calcula su edad', async () => {
+    const pagina = await abrir('REHAB_INFANTIL');
+    rellenar(pagina, {
+      nombre: 'Mateo',
+      apellido: 'Rivas',
+      representante: {
+        parentesco: 'PADRE',
+        nombre: ' José ',
+        cedula: '12.345.678',
+        fechaNacimiento: '1988-01-20',
+      },
+    });
+
+    expect((elemento().querySelector('#representante-edad') as HTMLInputElement).value).toMatch(
+      /años$/,
+    );
+    expect(elemento().textContent).not.toContain('Puedes guardar sin representante');
+
+    await enviar();
+    const peticion = http.expectOne('/api/v1/historias');
+    expect(peticion.request.body.representante).toEqual({
+      parentesco: 'PADRE',
+      nombre: 'José',
+      apellido: null,
+      cedula: '12345678',
+      fechaNacimiento: '1988-01-20',
+      estadoCivil: null,
+      gradoInstruccion: null,
+      ocupacion: null,
+    });
+    peticion.flush({ historia: { idHistoria: 'h5' } });
+  });
+
+  it('marca una cédula de representante con formato inválido', async () => {
+    const pagina = await abrir('REHAB_INFANTIL');
+    rellenar(pagina, {
+      nombre: 'Mateo',
+      apellido: 'Rivas',
+      representante: { cedula: '1234567890' },
+    });
+
+    await enviar();
+
+    expect(elemento().textContent).toContain(
+      'La cédula del representante debe contener solo dígitos, máximo 9.',
+    );
+    http.expectNone('/api/v1/historias');
+  });
 });

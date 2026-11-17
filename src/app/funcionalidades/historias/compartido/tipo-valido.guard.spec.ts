@@ -6,27 +6,26 @@ import {
   type ActivatedRouteSnapshot,
   type UrlTree,
 } from '@angular/router';
-import { tipoDisponible, tipoHistoriaDisponibleGuard } from './tipo-disponible.guard';
+import { tipoHistoriaValidoGuard } from './tipo-valido.guard';
 
 function ejecutar(tipo: string) {
   const ruta = { paramMap: convertToParamMap({ tipo }) } as ActivatedRouteSnapshot;
-  return TestBed.runInInjectionContext(() => tipoHistoriaDisponibleGuard(ruta, {} as never));
+  return TestBed.runInInjectionContext(() => tipoHistoriaValidoGuard(ruta, {} as never));
 }
 
-describe('tipoHistoriaDisponibleGuard', () => {
+describe('tipoHistoriaValidoGuard', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [provideZonelessChangeDetection(), provideRouter([])],
     });
   });
 
-  it('deja pasar los tipos de adulto', () => {
+  it('deja pasar los cuatro tipos', () => {
     expect(ejecutar('TRAUMA_ADULTO')).toBe(true);
-    expect(tipoDisponible('ADULTO_MAYOR')).toBe(true);
+    expect(ejecutar('REHAB_INFANTIL')).toBe(true);
   });
 
-  it('devuelve a elegir tipo con un tipo inexistente o aún no disponible', () => {
+  it('devuelve a elegir tipo con un tipo inexistente', () => {
     expect((ejecutar('OTRO') as UrlTree).toString()).toBe('/historias/nueva');
-    expect((ejecutar('REHAB_INFANTIL') as UrlTree).toString()).toBe('/historias/nueva');
   });
 });

@@ -96,7 +96,11 @@ export interface FiltrosHistorias {
 }
 
 export type CrearHistoriaPayload = Partial<DatosPersonales> &
-  Pick<DatosPersonales, 'nombre' | 'apellido'> & { tipo: TipoHistoria };
+  Pick<DatosPersonales, 'nombre' | 'apellido'> & {
+    tipo: TipoHistoria;
+    /** Solo Rehabilitación infantil (SPEC §8.4). */
+    representante?: DatosRepresentante | null;
+  };
 
 /** Cuerpo de un 409 al crear: duplicado del mismo tipo (RF-010). */
 export interface ErrorDuplicado {
@@ -107,5 +111,8 @@ export interface ErrorDuplicado {
 /** Cuerpo de un 400 de reglas de identificación (SPEC §9.2). */
 export interface ErrorValidacion {
   mensaje: string;
-  errores: { campo: 'nombre' | 'apellido' | 'documento' | 'fechaNacimiento'; mensaje: string }[];
+  errores: {
+    campo: 'nombre' | 'apellido' | 'documento' | 'fechaNacimiento' | 'representante.cedula';
+    mensaje: string;
+  }[];
 }

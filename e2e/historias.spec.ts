@@ -193,3 +193,48 @@ test('B13: un duplicado del mismo tipo ofrece abrir la historia existente', asyn
   await dialogo.getByRole('button', { name: 'Abrir historia existente' }).click();
   await expect(page).toHaveURL(new RegExp(`/historias/${RESUMEN.idHistoria}$`));
 });
+
+test('B10: crea una historia infantil sin documento, con el representante primero', async ({
+  page,
+}) => {
+  await iniciarSesionComo(page, FISIO);
+  let cuerpo: Record<string, unknown> | undefined;
+  const infantil = {
+    ...DETALLE,
+    tipo: 'REHAB_INFANTIL',
+    nombre: 'Sofía',
+    apellido: 'Martínez',
+    nacionalidad: null,
+    cedula: null,
+    sinDocumento: true,
+    camposFaltantes: ['representante.parentesco'],
+  };
+  await page.route('**/api/v1/historias', async (ruta) => {
+    if (ruta.request().method() !== 'POST') return ruta.fallback();
+    cuerpo = ruta.request().postDataJSON() as Record<string, unknown>;
+    await ruta.fulfill({ status: 201, json: { historia: infantil } });
+  });
+  await page.route(`**/api/v1/historias/${RESUMEN.idHistoria}`, (ruta) =>
+    ruta.fulfill({ json: { historia: infantil } }),
+  );
+
+  await page.goto('/historias/nueva/REHAB_INFANTIL');
+  await expect(page.locator('.seccion h2').first()).toHaveText('Representante');
+  await expect(page.getByText('Puedes guardar sin representante')).toBeVisible();
+
+  await page.locator('#representante-parentesco').selectOption('MADRE');
+  await page.locator('#representante-nombre').fill('Laura');
+  await page.locator('#nombre').fill('Sofía');
+  await page.locator('#apellido').fill('Martínez');
+  await page.getByText('Sin documento', { exact: true }).click();
+  await page.locator('#fechaNacimiento').fill('2022-06-10');
+  await page.getByRole('button', { name: 'Guardar borrador' }).click();
+
+  await expect(page).toHaveURL(new RegExp(`/historias/${RESUMEN.idHistoria}$`));
+  expect(cuerpo).toMatchObject({
+    tipo: 'REHAB_INFANTIL',
+    sinDocumento: true,
+    cedula: null,
+    representante: { parentesco: 'MADRE', nombre: 'Laura' },
+  });
+});

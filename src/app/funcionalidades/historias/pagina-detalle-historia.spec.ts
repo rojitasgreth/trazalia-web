@@ -152,4 +152,55 @@ describe('PaginaDetalleHistoria', () => {
 
     expect(elemento.textContent).toContain('No encontramos esta historia.');
   });
+
+  it('B22: una historia infantil sin representante lo muestra primero como "Sin registrar"', async () => {
+    const elemento = await abrir(
+      neuroCarlos({
+        tipo: 'REHAB_INFANTIL',
+        nacionalidad: null,
+        cedula: null,
+        sinDocumento: true,
+        camposFaltantes: [
+          'representante.parentesco',
+          'representante.nombre',
+          'representante.cedula',
+        ],
+      }),
+    );
+
+    const titulos = Array.from(elemento.querySelectorAll('.grupo h2')).map((h) => h.textContent);
+    expect(titulos[0]).toBe('Representante');
+    expect(elemento.textContent).toContain('Sin registrar');
+    expect(elemento.textContent).toContain(
+      'Registra al representante para poder iniciar la valoración.',
+    );
+    expect(elemento.textContent).toContain('Sin documento');
+    expect(elemento.textContent).toContain('Representante (3 datos)');
+  });
+
+  it('muestra los datos del representante registrado', async () => {
+    const elemento = await abrir(
+      neuroCarlos({
+        tipo: 'REHAB_INFANTIL',
+        representante: {
+          parentesco: 'MADRE',
+          nombre: 'Laura',
+          apellido: 'Martínez',
+          cedula: null,
+          fechaNacimiento: '1991-07-30',
+          estadoCivil: null,
+          gradoInstruccion: null,
+          ocupacion: null,
+        },
+        camposFaltantes: ['representante.cedula'],
+      }),
+    );
+    const texto = elemento.textContent ?? '';
+
+    expect(texto).toContain('Madre');
+    expect(texto).toContain('Laura');
+    expect(texto).toContain('30/07/1991');
+    expect(texto).toMatch(/\d+ años/);
+    expect(texto).toContain('Representante: cédula');
+  });
 });

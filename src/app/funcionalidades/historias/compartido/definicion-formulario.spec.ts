@@ -53,6 +53,22 @@ describe('definición del formulario por tipo (SPEC §8)', () => {
       'nivelEducativo',
     ]);
     expect(camposFaltantes('REHAB_INFANTIL', carlos({ cedula: null }))).toContain('documento');
+    // Sin representante faltan sus 8 datos; con él completo, ninguno.
+    expect(
+      camposFaltantes('REHAB_INFANTIL', carlos()).filter((c) => c.startsWith('representante.')),
+    ).toHaveLength(8);
+    expect(
+      camposFaltantes('REHAB_INFANTIL', carlos(), {
+        parentesco: 'MADRE',
+        nombre: 'Laura',
+        apellido: 'Martínez',
+        cedula: '18220417',
+        fechaNacimiento: '1991-07-30',
+        estadoCivil: 'Casado(a)',
+        gradoInstruccion: 'Universitario',
+        ocupacion: 'Docente',
+      }).filter((c) => c.startsWith('representante.')),
+    ).toEqual([]);
     expect(
       camposFaltantes('REHAB_INFANTIL', carlos({ cedula: null, sinDocumento: true })),
     ).not.toContain('documento');
@@ -60,7 +76,8 @@ describe('definición del formulario por tipo (SPEC §8)', () => {
 
   it('cuenta los datos exigibles sin nombre, apellido, edad ni correo', () => {
     expect(totalExigibles('TRAUMA_ADULTO')).toBe(10);
-    expect(totalExigibles('REHAB_INFANTIL')).toBe(8);
+    // Infantil: 8 propios + 8 del representante (RF-015).
+    expect(totalExigibles('REHAB_INFANTIL')).toBe(16);
   });
 
   it('resume los faltantes por sección y recorta las listas largas', () => {
@@ -76,7 +93,7 @@ describe('definición del formulario por tipo (SPEC §8)', () => {
     ).toEqual(['Teléfono', 'Residencia (3 datos)']);
     expect(
       resumirFaltantes('REHAB_INFANTIL', ['representante.nombre', 'representante.apellido']),
-    ).toEqual(['Representante']);
+    ).toEqual(['Representante: nombre', 'Representante: apellido']);
     expect(
       resumirFaltantes('REHAB_INFANTIL', [
         'representante.nombre',

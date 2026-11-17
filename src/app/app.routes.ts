@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 import { adminGuard } from './core/auth/admin.guard';
 import { authGuard, invitadoGuard } from './core/auth/auth.guard';
 import { fisioterapeutaGuard } from './core/auth/fisioterapeuta.guard';
-import { tipoHistoriaDisponibleGuard } from './funcionalidades/historias/compartido/tipo-disponible.guard';
+import { tipoHistoriaValidoGuard } from './funcionalidades/historias/compartido/tipo-valido.guard';
 
 export const routes: Routes = [
   {
@@ -94,7 +94,7 @@ export const routes: Routes = [
           },
           {
             path: 'nueva/:tipo',
-            canActivate: [tipoHistoriaDisponibleGuard],
+            canActivate: [tipoHistoriaValidoGuard],
             loadComponent: () =>
               import('./funcionalidades/historias/pagina-formulario-historia').then(
                 (m) => m.PaginaFormularioHistoria,

@@ -2,7 +2,6 @@ import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import type { TipoHistoria } from '../../core/historias/historias.model';
 import { ORDEN_TIPOS, TIPOS } from './compartido/presentacion';
-import { tipoDisponible } from './compartido/tipo-disponible.guard';
 
 /** B06 · Crear nueva historia: elegir uno de los cuatro tipos (RF-002). */
 @Component({
@@ -21,11 +20,7 @@ import { tipoDisponible } from './compartido/tipo-disponible.guard';
           <legend class="hc-solo-lector">Tipo de historia</legend>
           <div class="opciones">
             @for (tipo of tipos; track tipo) {
-              <label
-                class="opcion"
-                [class.seleccionada]="seleccionado() === tipo"
-                [class.no-disponible]="noDisponible(tipo)"
-              >
+              <label class="opcion" [class.seleccionada]="seleccionado() === tipo">
                 <span class="opcion-cabecera">
                   <span [class]="'icono ' + info(tipo).clase">{{ info(tipo).iniciales }}</span>
                   <input
@@ -33,15 +28,12 @@ import { tipoDisponible } from './compartido/tipo-disponible.guard';
                     name="tipo"
                     [value]="tipo"
                     [checked]="seleccionado() === tipo"
-                    [disabled]="noDisponible(tipo)"
                     (change)="seleccionado.set(tipo)"
                   />
                 </span>
                 <span class="opcion-titulo">{{ info(tipo).nombre }}</span>
                 <span class="opcion-descripcion">{{ info(tipo).descripcion }}</span>
-                @if (noDisponible(tipo)) {
-                  <span class="nota">Disponible próximamente</span>
-                } @else if (info(tipo).nota) {
+                @if (info(tipo).nota) {
                   <span class="nota">{{ info(tipo).nota }}</span>
                 }
               </label>
@@ -136,10 +128,6 @@ import { tipoDisponible } from './compartido/tipo-disponible.guard';
       padding: 19px;
       border: 2px solid var(--color-primario);
       background: var(--color-seleccion-fondo);
-    }
-    .opcion.no-disponible {
-      cursor: not-allowed;
-      opacity: 0.7;
     }
     .opcion:focus-within {
       outline: 3px solid var(--color-primario);
@@ -238,10 +226,6 @@ export class PaginaElegirTipo {
 
   protected info(tipo: TipoHistoria) {
     return TIPOS[tipo];
-  }
-
-  protected noDisponible(tipo: TipoHistoria): boolean {
-    return !tipoDisponible(tipo);
   }
 
   protected continuar(): void {
