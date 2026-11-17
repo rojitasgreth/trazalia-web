@@ -10,6 +10,8 @@ import type {
   TipoHistoria,
 } from '../../core/historias/historias.model';
 import {
+  CAMPOS_REPRESENTANTE,
+  PARENTESCOS,
   SEXOS,
   resumirFaltantes,
   seccionesDe,
@@ -35,6 +37,7 @@ interface Grupo {
   titulo: string;
   datos: Dato[];
   faltan: number;
+  sinRegistrar?: boolean;
 }
 
 const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
@@ -113,13 +116,20 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
               <section class="grupo" [attr.aria-label]="grupo.titulo">
                 <div class="grupo-cabecera">
                   <h2>{{ grupo.titulo }}</h2>
-                  @if (grupo.faltan > 0) {
+                  @if (grupo.sinRegistrar) {
+                    <span class="nota-aviso">Sin registrar</span>
+                  } @else if (grupo.faltan > 0) {
                     <span class="nota-aviso"
                       >{{ grupo.faltan }} {{ grupo.faltan === 1 ? 'dato' : 'datos' }} por
                       completar</span
                     >
                   }
                 </div>
+                @if (grupo.sinRegistrar) {
+                  <div class="aviso-representante">
+                    <span>Registra al representante para poder iniciar la valoración.</span>
+                  </div>
+                }
                 <dl>
                   @for (d of grupo.datos; track d.etiqueta) {
                     <div>
@@ -246,6 +256,36 @@ export class PaginaDetalleHistoria {
 
   private construirGrupos(h: HistoriaDetalle): Grupo[] {
     const faltantes = new Set(h.camposFaltantes);
+    const grupos: Grupo[] = h.tipo === 'REHAB_INFANTIL' ? [this.grupoRepresentante(h)] : [];
+    return grupos.concat(this.gruposPersonales(h, faltantes));
+  }
+
+  /** B22: en infantil, el representante va primero; sin registrar se avisa. */
+  private grupoRepresentante(h: HistoriaDetalle): Grupo {
+    const r = h.representante;
+    if (!r) return { titulo: 'Representante', datos: [], faltan: 0, sinRegistrar: true };
+    const datos: Dato[] = CAMPOS_REPRESENTANTE.map((campo) => {
+      const crudo = r[campo.clave];
+      const valor =
+        campo.tipo === 'parentesco'
+          ? (PARENTESCOS.find((p) => p.valor === crudo)?.etiqueta ?? '')
+          : campo.tipo === 'fecha'
+            ? formatearFecha(crudo)
+            : (crudo ?? '');
+      return valor
+        ? { etiqueta: campo.etiqueta, valor, estado: 'lleno' }
+        : { etiqueta: campo.etiqueta, valor: 'Falta', estado: 'falta' };
+    });
+    const edad = calcularEdad(r.fechaNacimiento, this.ahora);
+    if (edad) datos.splice(5, 0, { etiqueta: 'Edad', valor: edad, estado: 'lleno' });
+    return {
+      titulo: 'Representante',
+      datos,
+      faltan: datos.filter((d) => d.estado === 'falta').length,
+    };
+  }
+
+  private gruposPersonales(h: HistoriaDetalle, faltantes: Set<string>): Grupo[] {
     return seccionesDe(h.tipo).map((seccion) => {
       const datos = seccion.campos
         .filter((c) => !CAMPOS_EN_CABECERA.has(c.clave))

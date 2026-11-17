@@ -272,3 +272,11 @@ dd[data-estado='opcional'] {
     padding: 18px 16px;
   }
 }
+.aviso-representante {
+  padding: 14px 16px;
+  border-radius: var(--radio-tarjeta);
+  background: var(--color-aviso-fondo);
+  color: var(--color-aviso-intenso);
+  font-size: var(--texto-s);
+  line-height: 1.5;
+}

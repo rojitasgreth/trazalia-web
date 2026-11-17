@@ -31,14 +31,14 @@ describe('PaginaElegirTipo', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/historias/nueva', 'TRAUMA_ADULTO']);
   });
 
-  it('Rehabilitación infantil queda deshabilitada hasta el corte 2', async () => {
+  it('Rehabilitación infantil está disponible y avisa del representante', async () => {
     const fixture = TestBed.createComponent(PaginaElegirTipo);
     await fixture.whenStable();
     const elemento = fixture.nativeElement as HTMLElement;
 
     const infantil = elemento.querySelectorAll<HTMLInputElement>('input[type="radio"]')[2]!;
     expect(infantil.value).toBe('REHAB_INFANTIL');
-    expect(infantil.disabled).toBe(true);
-    expect(elemento.textContent).toContain('Disponible próximamente');
+    expect(infantil.disabled).toBe(false);
+    expect(elemento.textContent).toContain('Requiere un representante para iniciar la valoración');
   });
 });

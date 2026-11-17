@@ -1,4 +1,8 @@
-import type { DatosPersonales, TipoHistoria } from '../../../core/historias/historias.model';
+import type {
+  DatosPersonales,
+  DatosRepresentante,
+  TipoHistoria,
+} from '../../../core/historias/historias.model';
 
 // Listas del prototipo B (componente del formulario) y SPEC §8. Las entidades
 // federales son las 24 de Venezuela (el prototipo muestra una muestra).
@@ -242,6 +246,36 @@ export function seccionesDe(tipo: TipoHistoria): SeccionDef[] {
   }
 }
 
+export const PARENTESCOS = [
+  { valor: 'MADRE', etiqueta: 'Madre' },
+  { valor: 'PADRE', etiqueta: 'Padre' },
+] as const;
+
+export interface CampoRepresentanteDef {
+  clave: keyof DatosRepresentante;
+  etiqueta: string;
+  tipo: 'texto' | 'fecha' | 'seleccion' | 'parentesco';
+  opciones?: readonly string[];
+  placeholder?: string;
+}
+
+/** SPEC §8.4 / prototipo B10: representante único, que el formulario pide primero. */
+export const CAMPOS_REPRESENTANTE: readonly CampoRepresentanteDef[] = [
+  { clave: 'parentesco', etiqueta: 'Parentesco', tipo: 'parentesco' },
+  { clave: 'nombre', etiqueta: 'Nombre', tipo: 'texto' },
+  { clave: 'apellido', etiqueta: 'Apellido', tipo: 'texto' },
+  { clave: 'cedula', etiqueta: 'Cédula', tipo: 'texto', placeholder: 'V-00000000' },
+  { clave: 'fechaNacimiento', etiqueta: 'Fecha de nacimiento', tipo: 'fecha' },
+  { clave: 'estadoCivil', etiqueta: 'Estado civil', tipo: 'seleccion', opciones: ESTADOS_CIVILES },
+  {
+    clave: 'gradoInstruccion',
+    etiqueta: 'Grado de instrucción',
+    tipo: 'seleccion',
+    opciones: NIVELES_EDUCATIVOS,
+  },
+  { clave: 'ocupacion', etiqueta: 'Ocupación', tipo: 'texto' },
+];
+
 /** Campos que no cuentan para completar los datos personales. */
 const NO_EXIGIBLES = new Set(['nombre', 'apellido', 'edad', 'correo']);
 
@@ -255,8 +289,18 @@ function etiquetaFaltante(campo: CampoDef): string {
  * para completar la sección personal. El backend es la referencia; esto solo
  * alimenta el panel de progreso mientras se escribe.
  */
-export function camposFaltantes(tipo: TipoHistoria, datos: DatosPersonales): string[] {
+export function camposFaltantes(
+  tipo: TipoHistoria,
+  datos: DatosPersonales,
+  representante: DatosRepresentante | null = null,
+): string[] {
   const faltantes: string[] = [];
+  // RF-015: en infantil el representante es obligatorio para completarlos.
+  if (tipo === 'REHAB_INFANTIL') {
+    for (const campo of CAMPOS_REPRESENTANTE) {
+      if (!representante?.[campo.clave]) faltantes.push(`representante.${campo.clave}`);
+    }
+  }
   for (const seccion of seccionesDe(tipo)) {
     for (const campo of seccion.campos) {
       if (NO_EXIGIBLES.has(campo.clave) || campo.clave === 'edad') continue;
@@ -275,9 +319,13 @@ export function camposFaltantes(tipo: TipoHistoria, datos: DatosPersonales): str
 
 /** Total de datos exigibles del tipo (para "17 de 18"). */
 export function totalExigibles(tipo: TipoHistoria): number {
-  return seccionesDe(tipo)
-    .flatMap((s) => s.campos)
-    .filter((c) => !NO_EXIGIBLES.has(c.clave)).length;
+  const representante = tipo === 'REHAB_INFANTIL' ? CAMPOS_REPRESENTANTE.length : 0;
+  return (
+    representante +
+    seccionesDe(tipo)
+      .flatMap((s) => s.campos)
+      .filter((c) => !NO_EXIGIBLES.has(c.clave)).length
+  );
 }
 
 /**
@@ -290,10 +338,13 @@ export function resumirFaltantes(tipo: TipoHistoria, claves: readonly string[]):
   const lineas: string[] = [];
 
   const representante = claves.filter((c) => c.startsWith('representante.'));
-  if (representante.length > 0) {
-    lineas.push(
-      representante.length >= 3 ? `Representante (${representante.length} datos)` : 'Representante',
-    );
+  if (representante.length >= 3) {
+    lineas.push(`Representante (${representante.length} datos)`);
+  } else {
+    for (const clave of representante) {
+      const campo = CAMPOS_REPRESENTANTE.find((c) => `representante.${c.clave}` === clave);
+      lineas.push(`Representante: ${campo?.etiqueta.toLowerCase() ?? clave}`);
+    }
   }
 
   for (const seccion of seccionesDe(tipo)) {
