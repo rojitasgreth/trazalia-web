@@ -85,7 +85,15 @@ import type { RolUsuario, SesionPropia } from '../../core/auth/auth.model';
           </div>
           <div class="campo">
             <label for="telefono">Teléfono</label>
-            <input id="telefono" type="text" formControlName="telefono" />
+            <input
+              id="telefono"
+              type="tel"
+              aria-describedby="telefono-ayuda"
+              formControlName="telefono"
+              inputmode="numeric"
+              maxlength="11"
+            />
+            <p id="telefono-ayuda" class="ayuda">Solo dígitos, máximo 11 (p. ej. 04125550000).</p>
           </div>
           <div class="campo">
             <label for="rol">Rol</label>
@@ -359,7 +367,7 @@ export class PaginaDetalleUsuario {
   protected readonly formulario = this.fb.nonNullable.group({
     nombre: ['', [Validators.required]],
     apellido: ['', [Validators.required]],
-    telefono: [''],
+    telefono: ['', [Validators.pattern(/^\d{0,11}$/)]],
     correo: ['', [Validators.required, Validators.email]],
     rol: ['FISIOTERAPEUTA' as RolUsuario, [Validators.required]],
   });

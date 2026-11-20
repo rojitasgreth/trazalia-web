@@ -14,7 +14,7 @@ const CARLOS_TRAUMA: DatosPersonales = {
   nivelEducativo: null,
   estadoCivil: null,
   lugarNacimiento: null,
-  telefono: '0412-555-0134',
+  telefono: '04125550134',
   correo: null,
   dirEstado: null,
   dirMunicipio: null,
@@ -49,7 +49,7 @@ describe('planDeAutocompletado (SPEC §10.1)', () => {
       sexo: 'MASCULINO',
       dominancia: 'Diestro(a)',
       ocupacion: 'Contador · fútbol amateur',
-      telefono: '0412-555-0134',
+      telefono: '04125550134',
       contactoNombre: 'Patricia Andrade',
       contactoParentesco: 'Esposa',
     });

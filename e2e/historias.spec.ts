@@ -21,7 +21,7 @@ const RESUMEN = {
   nacionalidad: 'V',
   cedula: '15482301',
   sinDocumento: false,
-  telefono: '0412-555-0134',
+  telefono: '04125550134',
   fechaNacimiento: '1985-03-14',
   fechaCreacion: '2026-11-16T12:00:00.000Z',
   fechaActualizacion: '2026-11-16T12:00:00.000Z',
@@ -43,7 +43,7 @@ const DETALLE = {
     nivelEducativo: null,
     estadoCivil: null,
     lugarNacimiento: null,
-    telefono: '0412-555-0134',
+    telefono: '04125550134',
     correo: null,
     dirEstado: null,
     dirMunicipio: null,
@@ -155,8 +155,8 @@ test('crea una historia de Traumatología en Borrador y abre su detalle', async 
 
   await page.locator('#nombre').fill('Carlos');
   await page.locator('#apellido').fill('Andrade');
-  await page.getByLabel('Nacionalidad').selectOption('V');
-  await page.getByLabel('Número de cédula').fill('15.482.301');
+  await expect(page.getByLabel('Nacionalidad')).toHaveValue('V');
+  await page.getByLabel('Número de cédula').fill('15482301');
   await page.getByLabel('Fecha de nacimiento').fill('1985-03-14');
   await expect(page.getByLabel('Edad')).toHaveValue(/\d+ años/);
   await page.getByText('Masculino', { exact: true }).click();
@@ -191,7 +191,7 @@ test('B13: un duplicado del mismo tipo ofrece abrir la historia existente', asyn
   await page.goto('/historias/nueva/TRAUMA_ADULTO');
   await page.locator('#nombre').fill('Carlos');
   await page.locator('#apellido').fill('Andrade');
-  await page.getByLabel('Nacionalidad').selectOption('V');
+  await expect(page.getByLabel('Nacionalidad')).toHaveValue('V');
   await page.getByLabel('Número de cédula').fill('15482301');
   await page.getByRole('button', { name: 'Guardar borrador' }).click();
 
@@ -310,8 +310,8 @@ test('B16/B17: edita el teléfono y lo aplica también a la otra historia del pa
   await expect(page.getByRole('heading', { name: 'Editar datos personales' })).toBeVisible();
   await expect(page.getByText('Estás editando datos personales')).toBeVisible();
 
-  await page.locator('#telefono').fill('0424-555-8890');
-  await expect(page.getByText('Antes: 0412-555-0134')).toBeVisible();
+  await page.locator('#telefono').fill('04245558890');
+  await expect(page.getByText('Antes: 04125550134')).toBeVisible();
   await page.getByRole('button', { name: 'Guardar cambios' }).click();
 
   const dialogo = page.getByRole('dialog');
@@ -320,7 +320,7 @@ test('B16/B17: edita el teléfono y lo aplica también a la otra historia del pa
 
   await expect(page).toHaveURL(new RegExp(`/historias/${RESUMEN.idHistoria}$`));
   await expect(page.getByText('Cambios guardados.')).toBeVisible();
-  expect(cuerpo).toMatchObject({ telefono: '0424-555-8890', propagar: true });
+  expect(cuerpo).toMatchObject({ telefono: '04245558890', propagar: true });
 });
 
 test('B25: elimina definitivamente una historia sin registros clínicos', async ({ page }) => {

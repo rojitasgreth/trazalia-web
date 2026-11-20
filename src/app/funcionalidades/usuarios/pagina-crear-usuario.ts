@@ -23,7 +23,13 @@ import { UsuariosApi } from '../../core/admin/usuarios-api';
           </div>
           <div class="campo">
             <label for="cedula">Cédula</label>
-            <input id="cedula" type="text" formControlName="cedula" inputmode="numeric" />
+            <input
+              id="cedula"
+              type="text"
+              formControlName="cedula"
+              inputmode="numeric"
+              maxlength="9"
+            />
           </div>
         </div>
 
@@ -44,7 +50,15 @@ import { UsuariosApi } from '../../core/admin/usuarios-api';
 
         <div class="campo">
           <label for="telefono">Teléfono (opcional)</label>
-          <input id="telefono" type="text" formControlName="telefono" />
+          <input
+            id="telefono"
+            type="tel"
+            aria-describedby="telefono-ayuda"
+            formControlName="telefono"
+            inputmode="numeric"
+            maxlength="11"
+          />
+          <p id="telefono-ayuda" class="ayuda">Solo dígitos, máximo 11 (p. ej. 04125550000).</p>
         </div>
 
         <div class="campo">
@@ -106,6 +120,11 @@ import { UsuariosApi } from '../../core/admin/usuarios-api';
       flex-direction: column;
       gap: 6px;
       flex: 1;
+    }
+    .ayuda {
+      margin: 0;
+      font-size: var(--texto-xs);
+      color: var(--color-texto-secundario);
     }
     .campo--corto {
       flex: 0 0 90px;
@@ -183,7 +202,7 @@ export class PaginaCrearUsuario {
     nombre: ['', [Validators.required]],
     apellido: ['', [Validators.required]],
     correo: ['', [Validators.required, Validators.email]],
-    telefono: [''],
+    telefono: ['', [Validators.pattern(/^\d{0,11}$/)]],
     rol: ['FISIOTERAPEUTA' as 'ADMINISTRADOR' | 'FISIOTERAPEUTA', [Validators.required]],
   });
 

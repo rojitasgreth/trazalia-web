@@ -78,6 +78,42 @@ describe('PaginaFormularioHistoria', () => {
     expect(texto).not.toContain('Sin documento');
   });
 
+  it('la nacionalidad trae V por defecto y solo ofrece V o E', async () => {
+    await abrir();
+
+    const nacionalidad = elemento().querySelector<HTMLSelectElement>('#nacionalidad')!;
+    expect(nacionalidad.value).toBe('V');
+    expect([...nacionalidad.options].map((opcion) => opcion.value)).toEqual(['V', 'E']);
+  });
+
+  it('limita la cédula a 9 caracteres y los teléfonos a 11 dígitos', async () => {
+    const pagina = await abrir();
+
+    expect(elemento().querySelector('#cedula')?.getAttribute('maxlength')).toBe('9');
+    expect(elemento().querySelector('#telefono')?.getAttribute('maxlength')).toBe('11');
+    expect(elemento().querySelector('#contactoTelefono')?.getAttribute('maxlength')).toBe('11');
+
+    rellenar(pagina, {
+      nombre: 'Carlos',
+      apellido: 'Andrade',
+      cedula: '1',
+      telefono: '041255501345',
+    });
+    await enviar();
+    expect(elemento().textContent).toContain('El teléfono solo admite dígitos, máximo 11.');
+    http.expectNone('/api/v1/historias');
+  });
+
+  it('en infantil sin cédula no envía la nacionalidad por defecto', async () => {
+    const pagina = await abrir('REHAB_INFANTIL');
+    rellenar(pagina, { nombre: 'Sofía', apellido: 'Ramírez' });
+
+    await enviar();
+    const peticion = http.expectOne('/api/v1/historias');
+    expect(peticion.request.body).toMatchObject({ nacionalidad: null, cedula: null });
+    peticion.flush({ historia: { idHistoria: 'h1' } });
+  });
+
   it('B12/AC-004: sin nombre, apellido ni cédula no envía y explica qué falta', async () => {
     await abrir();
 
@@ -100,9 +136,9 @@ describe('PaginaFormularioHistoria', () => {
       nombre: ' Carlos ',
       apellido: 'Andrade',
       nacionalidad: 'V',
-      cedula: '15.482.301',
+      cedula: '15482301',
       fechaNacimiento: '1985-03-14',
-      telefono: '0412-555-0134',
+      telefono: '04125550134',
     });
 
     expect((elemento().querySelector('#edad') as HTMLInputElement).value).toMatch(/^\d+ años$/);
@@ -279,7 +315,7 @@ describe('PaginaFormularioHistoria', () => {
       representante: {
         parentesco: 'PADRE',
         nombre: ' José ',
-        cedula: '12.345.678',
+        cedula: '12345678',
         fechaNacimiento: '1988-01-20',
       },
     });
@@ -326,7 +362,7 @@ describe('PaginaFormularioHistoria', () => {
 
   it('B14/B15/AC-007: ofrece autocompletar con otra historia del paciente y marca lo copiado', async () => {
     const pagina = await abrir('NEURO_ADULTO');
-    rellenar(pagina, { nacionalidad: 'V', cedula: '15.482.301' });
+    rellenar(pagina, { nacionalidad: 'V', cedula: '15482301' });
 
     salirDeCampo();
     const consulta = http.expectOne('/api/v1/historias/coincidencias');
@@ -351,7 +387,7 @@ describe('PaginaFormularioHistoria', () => {
         nivelEducativo: null,
         estadoCivil: null,
         lugarNacimiento: null,
-        telefono: '0412-555-0134',
+        telefono: '04125550134',
         correo: null,
         dirEstado: null,
         dirMunicipio: null,
@@ -359,7 +395,7 @@ describe('PaginaFormularioHistoria', () => {
         dirComunidad: null,
         contactoNombre: 'Patricia Andrade',
         contactoParentesco: 'Esposa',
-        contactoTelefono: '0414-555-2290',
+        contactoTelefono: '04145552290',
         demandasFisicas: null,
         fuenteInformacion: [],
         modalidad: null,
@@ -380,7 +416,7 @@ describe('PaginaFormularioHistoria', () => {
     harness.fixture.detectChanges();
 
     expect((elemento().querySelector('#nombre') as HTMLInputElement).value).toBe('Carlos');
-    expect((elemento().querySelector('#telefono') as HTMLInputElement).value).toBe('0412-555-0134');
+    expect((elemento().querySelector('#telefono') as HTMLInputElement).value).toBe('04125550134');
     expect(elemento().querySelector('[role="status"]')?.textContent).toContain(
       'Usamos los datos de su historia de Traumatología del adulto',
     );
