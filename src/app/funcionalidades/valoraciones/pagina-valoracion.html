@@ -1,0 +1,294 @@
+@if (errorCarga()) {
+  <div class="hc-banner" data-variante="error" role="alert">
+    <div class="hc-banner-texto">
+      <strong>No se pudo cargar la valoración</strong>
+      <span>Revisa tu conexión e inténtalo de nuevo.</span>
+    </div>
+    <button type="button" class="hc-banner-boton" (click)="cargar()">Reintentar</button>
+  </div>
+} @else if (respuesta(); as r) {
+  @if (imprimiendo() && valoracion(); as v) {
+    <!-- C5-04: todas las secciones seguidas, con el bloque de firmas de la ficha. -->
+    <article class="impresion">
+      <header class="impresion-cabecera">
+        <h1>{{ r.ficha.titulo }}</h1>
+        <p>{{ r.ficha.subtitulo }}</p>
+        <p>{{ lineaPaciente() }} · Finalizada el {{ finalizadaEl() }}</p>
+      </header>
+      @for (s of r.ficha.secciones; track s.id) {
+        <section class="impresion-seccion" [attr.aria-labelledby]="'imp-' + s.id">
+          <h2 [id]="'imp-' + s.id">{{ s.titulo }}</h2>
+          <app-seccion-ficha
+            [seccion]="s"
+            [grupo]="grupo!"
+            [lectura]="true"
+            [imprimir]="true"
+            [datos]="r.datos"
+            [automaticos]="automaticos()"
+          />
+        </section>
+      }
+      @if (r.ficha.firmas.length) {
+        <section class="firmas" aria-label="Firmas">
+          @for (f of r.ficha.firmas; track f.titulo) {
+            <div class="firma">
+              <div class="firma-linea"></div>
+              <strong>{{ f.titulo }}</strong>
+              <span>{{
+                f.quien === 'fisioterapeuta' ? v.nombreFisioterapeuta : r.datos.nombre
+              }}</span>
+              <span class="firma-indicacion">{{ f.indicacion }}</span>
+            </div>
+          }
+        </section>
+      }
+    </article>
+  } @else {
+    <div class="pagina">
+      <header class="cabecera">
+        <a [routerLink]="['/historias', idHistoria]" class="volver">← Volver a la historia</a>
+        <div class="titulo">
+          <h1>Valoración</h1>
+          @if (valoracion(); as v) {
+            <span class="hc-chip" [attr.data-estado]="lectura() ? 'finalizada' : 'borrador'">{{
+              v.estado === 'FINALIZADA' ? 'Finalizada · solo lectura' : 'En curso'
+            }}</span>
+          }
+        </div>
+        <p class="linea">
+          <span class="hc-punto" [attr.data-tipo]="r.historia.tipo" aria-hidden="true"></span>
+          {{ tipo()?.nombre }} · {{ lineaPaciente() }}
+        </p>
+      </header>
+
+      @if (conflicto()) {
+        <div class="hc-banner" data-variante="error" role="alert">
+          <div class="hc-banner-texto">
+            <strong>La valoración cambió en otra pestaña</strong>
+            <span
+              >No se guardó lo último que escribiste aquí. Recarga para ver la última versión.</span
+            >
+          </div>
+          <button type="button" class="hc-banner-boton" (click)="cargar()">Recargar</button>
+        </div>
+      }
+      @if (error(); as mensaje) {
+        <div class="hc-banner" data-variante="error" role="alert">
+          <div class="hc-banner-texto">
+            <span>{{ mensaje }}</span>
+          </div>
+        </div>
+      }
+
+      @if (!valoracion()) {
+        <section class="panel vacio">
+          @if (r.historia.puedeIniciarValoracion) {
+            <h2>La valoración aún no se ha iniciado</h2>
+            <p>Al iniciarla se registran automáticamente tu nombre y la fecha y hora de inicio.</p>
+            <button type="button" class="hc-boton" data-variante="primario" (click)="iniciar()">
+              Iniciar valoración
+            </button>
+          } @else {
+            <h2>Aún no se puede iniciar la valoración</h2>
+            <p>Completa los datos personales de la historia para habilitarla.</p>
+            <a class="hc-boton" data-variante="neutro" [routerLink]="['/historias', idHistoria]"
+              >Ir a la historia</a
+            >
+          }
+        </section>
+      } @else if (valoracion(); as v) {
+        @if (lectura()) {
+          <div class="hc-banner" data-variante="info" role="status">
+            <div class="hc-banner-texto">
+              <strong
+                >Valoración finalizada el {{ finalizadaEl() }} por
+                {{ v.nombreFisioterapeuta }}</strong
+              >
+              <span
+                >Ya no se puede editar. Puedes consultarla e imprimirla para recoger las firmas en
+                papel.</span
+              >
+            </div>
+          </div>
+        } @else if (guardadoA(); as a) {
+          <div class="hc-banner" data-variante="exito" role="status">
+            <div class="hc-banner-texto">
+              <strong>Borrador de la valoración guardado hoy a las {{ a }}</strong>
+              <span
+                >Puedes salir y seguir después. Cuando la finalices ya no podrás editarla y la
+                historia pasará a Activa.</span
+              >
+            </div>
+          </div>
+        }
+
+        <div class="cuerpo">
+          <div class="lateral">
+            <div
+              class="pestanas"
+              role="tablist"
+              aria-label="Secciones de la ficha"
+              aria-orientation="vertical"
+              tabindex="-1"
+              (keydown)="teclaPestanas($event)"
+            >
+              <span class="pestanas-titulo">Secciones de la ficha</span>
+              @for (s of r.ficha.secciones; track s.id; let i = $index) {
+                <button
+                  type="button"
+                  role="tab"
+                  class="pestana"
+                  [id]="'pestana-' + i"
+                  [attr.aria-selected]="i === activa()"
+                  aria-controls="panel-seccion"
+                  [tabindex]="i === activa() ? 0 : -1"
+                  (click)="irA(i)"
+                >
+                  <span class="pestana-numero">{{ i + 1 }}</span>
+                  <span>{{ s.corto }}</span>
+                </button>
+              }
+            </div>
+            <section class="panel ayuda">
+              <h2>{{ lectura() ? 'Solo lectura' : 'Cómo llenarla' }}</h2>
+              <p>
+                {{
+                  lectura()
+                    ? 'La valoración se finalizó y no admite cambios. Los campos vacíos se muestran con una raya.'
+                    : 'Cada pestaña es una sección de la ficha, en su orden. Ningún campo es obligatorio; lo escrito se guarda al cambiar de pestaña. Puedes guardar y seguir después.'
+                }}
+              </p>
+            </section>
+          </div>
+
+          <div class="principal">
+            @if (r.ficha.secciones[activa()]; as s) {
+              <section
+                id="panel-seccion"
+                class="panel seccion"
+                role="tabpanel"
+                [attr.aria-labelledby]="'pestana-' + activa()"
+              >
+                <div class="seccion-cabecera">
+                  <h2>{{ s.titulo }}</h2>
+                  <span class="posicion"
+                    >Sección {{ activa() + 1 }} de {{ r.ficha.secciones.length }}</span
+                  >
+                </div>
+                <app-seccion-ficha
+                  [seccion]="s"
+                  [grupo]="grupo!"
+                  [lectura]="lectura()"
+                  [datos]="r.datos"
+                  [automaticos]="automaticos()"
+                  (recalcular)="recalcularImc($event)"
+                />
+              </section>
+            }
+            <div class="paginador">
+              @if (anterior(); as a) {
+                <button
+                  type="button"
+                  class="hc-boton"
+                  data-variante="neutro"
+                  (click)="irA(activa() - 1)"
+                >
+                  ← Anterior: {{ a.corto }}
+                </button>
+              }
+              <span class="espacio"></span>
+              @if (siguiente(); as s) {
+                <button
+                  type="button"
+                  class="hc-boton"
+                  data-variante="secundario"
+                  (click)="irA(activa() + 1)"
+                >
+                  Siguiente: {{ s.corto }} →
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="pie">
+          <span class="pie-nota">{{
+            lectura()
+              ? 'Finalizada el ' + finalizadaEl()
+              : 'Al finalizar, la valoración ya no se podrá editar.'
+          }}</span>
+          @if (lectura()) {
+            <a class="hc-boton" data-variante="neutro" [routerLink]="['/historias', idHistoria]"
+              >Volver a la historia</a
+            >
+            @if (v.estado === 'FINALIZADA') {
+              <button type="button" class="hc-boton" data-variante="primario" (click)="imprimir()">
+                Imprimir para firmas
+              </button>
+            }
+          } @else {
+            <button
+              type="button"
+              class="hc-boton"
+              data-variante="neutro"
+              [disabled]="guardando()"
+              (click)="guardarYSalir()"
+            >
+              {{ guardando() ? 'Guardando…' : 'Guardar y salir' }}
+            </button>
+            <button
+              type="button"
+              class="hc-boton"
+              data-variante="primario"
+              (click)="confirmarFinalizar.set(true)"
+            >
+              Finalizar valoración
+            </button>
+          }
+        </div>
+
+        @if (confirmarFinalizar()) {
+          <!-- C5-01 -->
+          <app-dialogo-historia
+            icono="candado"
+            variante="aviso"
+            titulo="¿Finalizar la valoración?"
+            texto="Al finalizarla ya no podrás editarla. Quedará en solo lectura para consultarla e imprimirla, y la historia pasará a Activa."
+            (cerrar)="confirmarFinalizar.set(false)"
+          >
+            <div class="resumen">
+              <div class="resumen-textos">
+                <strong>{{ r.datos.nombre }}</strong>
+                <span>{{ tipo()?.nombre }} · {{ r.datos.documento }}</span>
+                <span class="resumen-inicio"
+                  >Valoración iniciada el {{ automaticos().fechaHora }} por
+                  {{ v.nombreFisioterapeuta }}</span
+                >
+              </div>
+              <span class="hc-chip" data-estado="borrador">Borrador → Activa</span>
+            </div>
+            <p class="recordatorio">
+              Revisa la ficha antes de continuar: los campos que dejaste vacíos quedarán vacíos. Los
+              cambios posteriores del paciente se registran en las evoluciones.
+            </p>
+            <ng-container acciones>
+              <button
+                type="button"
+                class="hc-boton"
+                data-variante="neutro"
+                (click)="confirmarFinalizar.set(false)"
+              >
+                Seguir editando
+              </button>
+              <button type="button" class="hc-boton" data-variante="primario" (click)="finalizar()">
+                Finalizar valoración
+              </button>
+            </ng-container>
+          </app-dialogo-historia>
+        }
+      }
+    </div>
+  }
+} @else {
+  <p class="cargando" role="status">Cargando la valoración…</p>
+}

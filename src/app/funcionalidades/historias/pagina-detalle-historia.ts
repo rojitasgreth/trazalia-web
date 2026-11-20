@@ -4,6 +4,7 @@ import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { HistoriasApi } from '../../core/historias/historias-api';
+import { ValoracionesApi } from '../../core/valoraciones/valoraciones-api';
 import type {
   DatosPersonales,
   HistoriaDelPaciente,
@@ -223,9 +224,10 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
               <h2 id="titulo-valoracion">Valoración</h2>
               @if (h.estado === 'ACTIVA') {
                 <p>
-                  Completada. Con ella la historia pasó a Activa. Las valoraciones se diseñan en la
-                  próxima fase.
+                  Finalizada. Con ella la historia pasó a Activa. Puedes consultarla e imprimirla.
                 </p>
+              } @else if (h.tieneRegistrosClinicos) {
+                <p>En curso. Puedes seguir llenándola donde la dejaste.</p>
               } @else if (razones().length > 0) {
                 <p>Aún no se puede iniciar. Falta completar:</p>
                 <ul class="razones">
@@ -234,14 +236,28 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
                   }
                 </ul>
               } @else {
-                <p>
-                  Los datos personales están completos. Las valoraciones se diseñan en la próxima
-                  fase.
-                </p>
+                <p>Los datos personales están completos: ya puedes iniciar la valoración.</p>
               }
-              <button type="button" class="boton-valoracion" disabled>
-                {{ h.estado === 'ACTIVA' ? 'Ver valoración (próxima fase)' : 'Iniciar valoración' }}
-              </button>
+              <!-- SPEC B v1.6 RF-030 / SPEC C §6: iniciar, continuar o ver la valoración. -->
+              @if (h.estado === 'ACTIVA' || h.tieneRegistrosClinicos) {
+                <a
+                  class="boton-valoracion"
+                  [routerLink]="['/historias', h.idHistoria, 'valoracion']"
+                  >{{ h.estado === 'ACTIVA' ? 'Ver valoración' : 'Continuar valoración' }}</a
+                >
+              } @else {
+                <button
+                  type="button"
+                  class="boton-valoracion"
+                  [disabled]="!h.puedeIniciarValoracion || iniciando()"
+                  (click)="iniciarValoracion(h.idHistoria)"
+                >
+                  {{ iniciando() ? 'Iniciando…' : 'Iniciar valoración' }}
+                </button>
+              }
+              @if (errorValoracion(); as mensaje) {
+                <p class="mensaje-error" role="alert">{{ mensaje }}</p>
+              }
             </section>
 
             <section class="panel" aria-labelledby="titulo-otras">
@@ -285,6 +301,9 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
 })
 export class PaginaDetalleHistoria {
   private readonly api = inject(HistoriasApi);
+  private readonly valoraciones = inject(ValoracionesApi);
+  protected readonly iniciando = signal(false);
+  protected readonly errorValoracion = signal<string | null>(null);
   private readonly router = inject(Router);
   private readonly ahora = new Date();
 
@@ -487,6 +506,22 @@ export class PaginaDetalleHistoria {
     }
   }
 
+  /** SPEC C §6 pasos 1–2: crea la valoración En curso y la abre. */
+  protected iniciarValoracion(idHistoria: string): void {
+    this.iniciando.set(true);
+    this.errorValoracion.set(null);
+    this.valoraciones.iniciar(idHistoria).subscribe({
+      next: () => void this.router.navigate(['/historias', idHistoria, 'valoracion']),
+      error: (error: unknown) => {
+        this.iniciando.set(false);
+        this.errorValoracion.set(
+          error instanceof HttpErrorResponse && typeof error.error?.mensaje === 'string'
+            ? error.error.mensaje
+            : 'No se pudo iniciar la valoración. Inténtalo de nuevo.',
+        );
+      },
+    });
+  }
   protected info(tipo: TipoHistoria) {
     return TIPOS[tipo];
   }

@@ -92,3 +92,14 @@ a:hover {
   outline: 3px solid var(--color-primario);
   outline-offset: 2px;
 }
+
+/* SPEC C §11 (impresión del navegador): solo la ficha, sin la navegación. */
+@media print {
+  app-shell-autenticado .barra-lateral,
+  app-shell-autenticado .area-principal > .encabezado {
+    display: none !important;
+  }
+  body {
+    background: var(--color-superficie);
+  }
+}

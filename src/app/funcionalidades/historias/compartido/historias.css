@@ -207,3 +207,9 @@
 .hc-solo-lector-leyenda .insignia {
   font-size: 11px;
 }
+
+/* SPEC C: valoración finalizada (solo lectura). */
+.hc-chip[data-estado='finalizada'] {
+  background: var(--color-info-fondo);
+  color: var(--color-info);
+}

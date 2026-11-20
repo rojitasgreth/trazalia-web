@@ -1,0 +1,338 @@
+@for (bloque of seccion().bloques; track $index) {
+  @switch (bloque.k) {
+    @case ('sub') {
+      <h3 class="sub">{{ bloque.texto }}</h3>
+    }
+    @case ('nota') {
+      <p class="nota">{{ bloque.texto }}</p>
+    }
+    @case ('referencia') {
+      @if (!imprimir()) {
+        <details class="referencia">
+          <summary>
+            <span class="ref-titulo">Ver escala: {{ bloque.titulo }}</span>
+            <span class="ref-etiqueta">Referencia de la ficha · no guarda datos</span>
+          </summary>
+          <div class="ref-cuerpo">
+            @if (bloque.especial === 'dolor') {
+              <div class="dolor" role="list" aria-label="Escala del dolor de 0 a 10">
+                @for (n of bloque.filas[0]!.celdas; track $index) {
+                  <div class="dolor-valor" role="listitem">
+                    <span class="dolor-numero" [style.background]="coloresDolor[$index]">{{
+                      n
+                    }}</span>
+                    <span class="dolor-texto">{{ bloque.filas[1]!.celdas[$index] }}</span>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="ref-tabla" role="table" [attr.aria-label]="bloque.titulo">
+                @for (fila of bloque.filas; track $index) {
+                  <div
+                    role="row"
+                    class="ref-fila"
+                    [class.ref-encabezado]="fila.encabezado"
+                    [style.grid-template-columns]="bloque.columnas"
+                  >
+                    @for (texto of fila.celdas; track $index) {
+                      <div
+                        [attr.role]="fila.encabezado ? 'columnheader' : 'cell'"
+                        class="ref-celda"
+                        [style.background]="colorLeyenda(fila.colores?.[$index])"
+                      >
+                        {{ texto }}
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+            @if (bloque.pie) {
+              <p class="ref-pie">{{ bloque.pie }}</p>
+            }
+          </div>
+        </details>
+      }
+    }
+    @case ('campos') {
+      <div class="campos">
+        @for (campo of bloque.campos; track campo.id) {
+          <div class="campo" [class.completo]="completo(campo)">
+            @switch (campo.k) {
+              @case ('info') {
+                <span class="etiqueta-dato">{{ campo.etiqueta }}</span>
+                <span class="valor-dato">{{ dato(campo.fuente) }}</span>
+              }
+              @case ('auto') {
+                <span class="etiqueta-dato"
+                  >{{ campo.etiqueta }} <span class="insignia">Automático</span></span
+                >
+                <span class="valor-dato">{{ automaticos()[campo.automatico] || '—' }}</span>
+              }
+              @default {
+                @if (lectura()) {
+                  <span class="etiqueta-dato">{{ campo.etiqueta }}</span>
+                  @if (campo.k === 'grupo') {
+                    <span class="valor-dato">
+                      @for (p of campo.partes; track p.id) {
+                        <span class="parte-leida"
+                          >{{ p.etiqueta }} {{ texto(campo.id + '.' + p.id) }}
+                          {{ p.unidad ?? '' }}</span
+                        >
+                      }
+                    </span>
+                  } @else {
+                    <span class="valor-dato" [class.vacio]="texto(campo.id) === '—'">
+                      {{ texto(campo.id)
+                      }}{{
+                        campo.k === 'numero' && texto(campo.id) !== '—' ? ' ' + campo.unidad : ''
+                      }}
+                      @if (campo.k === 'multiple' && valor(campo.id + '.otro')) {
+                        · {{ valor(campo.id + '.otro') }}
+                      }
+                    </span>
+                  }
+                } @else {
+                  @switch (campo.k) {
+                    @case ('area') {
+                      <label [for]="idDe(campo.id)">{{ campo.etiqueta }}</label>
+                      <textarea
+                        [id]="idDe(campo.id)"
+                        rows="3"
+                        [formControl]="control(campo.id)"
+                        [placeholder]="campo.placeholder ?? ''"
+                      ></textarea>
+                    }
+                    @case ('unica') {
+                      <fieldset>
+                        <legend>{{ campo.etiqueta }}</legend>
+                        <div class="opciones">
+                          @for (o of campo.opciones; track o) {
+                            <label class="opcion" [class.marcada]="valor(campo.id) === o">
+                              <input type="radio" [formControl]="control(campo.id)" [value]="o" />{{
+                                o
+                              }}
+                            </label>
+                          }
+                        </div>
+                      </fieldset>
+                    }
+                    @case ('multiple') {
+                      <fieldset>
+                        <legend>{{ campo.etiqueta }}</legend>
+                        <div class="opciones">
+                          @for (o of campo.opciones; track o) {
+                            <label class="opcion" [class.marcada]="marcada(campo.id, o)">
+                              <input
+                                type="checkbox"
+                                [checked]="marcada(campo.id, o)"
+                                (change)="alternar(campo.id, o)"
+                              />{{ o }}
+                            </label>
+                          }
+                          @if (campo.otroLibre) {
+                            <input
+                              class="otro"
+                              type="text"
+                              placeholder="Otro"
+                              [attr.aria-label]="campo.etiqueta + ': otro'"
+                              [formControl]="control(campo.id + '.otro')"
+                            />
+                          }
+                        </div>
+                      </fieldset>
+                    }
+                    @case ('grupo') {
+                      <fieldset>
+                        <legend>{{ campo.etiqueta }}</legend>
+                        <div class="partes">
+                          @for (p of campo.partes; track p.id) {
+                            <div class="parte">
+                              <label [for]="idDe(campo.id + '.' + p.id)">{{ p.etiqueta }}</label>
+                              <span class="con-unidad">
+                                <input
+                                  [id]="idDe(campo.id + '.' + p.id)"
+                                  [type]="
+                                    p.tipo === 'fecha'
+                                      ? 'date'
+                                      : p.tipo === 'hora'
+                                        ? 'time'
+                                        : 'text'
+                                  "
+                                  [style.width.px]="p.ancho ?? 96"
+                                  [formControl]="control(campo.id + '.' + p.id)"
+                                />
+                                @if (p.unidad) {
+                                  <span class="unidad">{{ p.unidad }}</span>
+                                }
+                              </span>
+                            </div>
+                          }
+                        </div>
+                      </fieldset>
+                    }
+                    @default {
+                      <label [for]="idDe(campo.id)">{{ campo.etiqueta }}</label>
+                      <span class="con-unidad">
+                        <input
+                          [id]="idDe(campo.id)"
+                          [type]="campo.k === 'fecha' ? 'date' : 'text'"
+                          [attr.inputmode]="
+                            campo.k === 'numero' || campo.k === 'imc' ? 'decimal' : null
+                          "
+                          [class.calculado]="campo.k === 'imc'"
+                          [placeholder]="campo.k === 'texto' ? (campo.placeholder ?? '') : ''"
+                          [formControl]="control(campo.id)"
+                          [attr.aria-describedby]="
+                            campo.k === 'imc' ? idDe(campo.id) + '-ayuda' : null
+                          "
+                        />
+                        @if (campo.k === 'numero') {
+                          <span class="unidad">{{ campo.unidad }}</span>
+                        }
+                        @if (campo.k === 'imc') {
+                          <button
+                            type="button"
+                            class="recalcular"
+                            (click)="recalcular.emit(campo.id)"
+                          >
+                            Recalcular
+                          </button>
+                        }
+                      </span>
+                      @if (campo.k === 'imc') {
+                        <span class="ayuda" [id]="idDe(campo.id) + '-ayuda'">{{
+                          campo.ayuda
+                        }}</span>
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          </div>
+        }
+      </div>
+    }
+    @case ('tabla') {
+      <div class="tabla" role="table" [attr.aria-label]="bloque.titulo">
+        <div class="tabla-interior" [style.grid-template-columns]="columnas(bloque)">
+          <div role="row" class="fila">
+            @for (col of bloque.columnas; track $index) {
+              <div role="columnheader" class="encabezado">{{ col.titulo }}</div>
+            }
+          </div>
+          @for (fila of bloque.filas; track $index) {
+            <div role="row" class="fila">
+              @for (celda of fila; track $index; let c = $index) {
+                <div [attr.role]="c === 0 ? 'rowheader' : 'cell'" class="celda">
+                  @switch (celda.k) {
+                    @case ('fijo') {
+                      <span [class.destacado]="celda.destacado">{{ celda.texto }}</span>
+                    }
+                    @case ('bandera') {
+                      <span class="bandera"
+                        ><span class="bandera-punto" [style.background]="celda.color"></span
+                        >{{ celda.texto }}</span
+                      >
+                    }
+                    @case ('na') {
+                      <span class="na" aria-label="No aplica">—</span>
+                    }
+                    @case ('casilla') {
+                      @if (lectura()) {
+                        <span>{{ valor(celda.id) === true ? 'Sí' : '—' }}</span>
+                      } @else {
+                        <input
+                          type="checkbox"
+                          class="casilla"
+                          [attr.aria-label]="celda.etiqueta"
+                          [formControl]="control(celda.id)"
+                        />
+                      }
+                    }
+                    @case ('unica') {
+                      @if (lectura()) {
+                        <span>{{ texto(celda.id) }}</span>
+                      } @else {
+                        <div
+                          class="opciones"
+                          role="radiogroup"
+                          [attr.aria-label]="etiquetaCelda(bloque, fila, c)"
+                        >
+                          @for (o of celda.opciones; track o) {
+                            <label class="opcion mini" [class.marcada]="valor(celda.id) === o">
+                              <input type="radio" [formControl]="control(celda.id)" [value]="o" />{{
+                                o
+                              }}
+                            </label>
+                          }
+                        </div>
+                      }
+                    }
+                    @case ('partes') {
+                      <span class="partes">
+                        @for (p of celda.partes; track p.id) {
+                          <span class="parte-celda">
+                            {{ p.etiqueta }}
+                            @if (lectura()) {
+                              {{ texto(celda.id + '.' + p.id) }}
+                            } @else {
+                              <input
+                                type="text"
+                                class="mini-entrada"
+                                [class.calculado]="p.id === 'imc'"
+                                [attr.aria-label]="
+                                  etiquetaCelda(bloque, fila, c) + ' · ' + (p.etiqueta || 'valor')
+                                "
+                                [formControl]="control(celda.id + '.' + p.id)"
+                              />
+                            }
+                            {{ p.unidad ?? '' }}
+                            @if (p.id === 'imc' && !lectura()) {
+                              <button
+                                type="button"
+                                class="recalcular"
+                                (click)="recalcular.emit(celda.id + '.imc')"
+                              >
+                                Recalcular
+                              </button>
+                            }
+                          </span>
+                        }
+                      </span>
+                    }
+                    @case ('texto') {
+                      @if (lectura()) {
+                        <span
+                          >{{ texto(celda.id)
+                          }}{{
+                            celda.unidad && texto(celda.id) !== '—' ? ' ' + celda.unidad : ''
+                          }}</span
+                        >
+                      } @else {
+                        <span class="con-unidad">
+                          <input
+                            [type]="celda.tipo === 'fecha' ? 'date' : 'text'"
+                            class="entrada-celda"
+                            [attr.aria-label]="etiquetaCelda(bloque, fila, c)"
+                            [placeholder]="celda.placeholder ?? ''"
+                            [formControl]="control(celda.id)"
+                            [class.inactiva]="deshabilitada(celda)"
+                          />
+                          @if (celda.unidad) {
+                            <span class="unidad">{{ celda.unidad }}</span>
+                          }
+                        </span>
+                      }
+                    }
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+}

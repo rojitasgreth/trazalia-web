@@ -1,0 +1,331 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sub {
+  margin: 6px 0 0;
+  font-size: var(--texto-l);
+  font-weight: 700;
+}
+.nota {
+  margin: 0;
+  font-size: var(--texto-xs);
+  line-height: 1.5;
+  color: var(--color-texto-secundario);
+  font-style: italic;
+}
+.campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px 18px;
+}
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.completo {
+  grid-column: 1 / -1;
+}
+label,
+legend {
+  font-size: var(--texto-s);
+  font-weight: 600;
+}
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+legend {
+  padding: 0 0 6px;
+}
+input[type='text'],
+input[type='date'],
+input[type='time'],
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-control);
+  font: inherit;
+  font-size: var(--texto-m);
+  color: var(--color-texto);
+  background: var(--color-superficie);
+}
+textarea {
+  height: auto;
+  min-height: 88px;
+  padding: 10px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.calculado {
+  border-color: var(--color-autocompletado-borde);
+  background: var(--color-seleccion-fondo);
+}
+.con-unidad {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.unidad {
+  font-size: var(--texto-xs);
+  color: var(--color-texto-secundario);
+  white-space: nowrap;
+}
+.ayuda {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-texto-secundario);
+}
+.opciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.opcion {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 12px;
+  font-weight: 500;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-control);
+  background: var(--color-superficie);
+}
+.opcion.marcada {
+  border: 2px solid var(--color-primario);
+  padding: 0 11px;
+  font-weight: 600;
+  background: var(--color-seleccion-fondo);
+}
+.opcion.mini {
+  min-height: 34px;
+  gap: 4px;
+  padding: 0 7px;
+  font-size: var(--texto-xs);
+  white-space: nowrap;
+}
+.opcion input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-primario);
+}
+.otro {
+  width: 160px;
+  height: 36px;
+}
+.partes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: flex-end;
+}
+.parte {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.parte label {
+  font-size: var(--texto-xs);
+  font-weight: 500;
+  color: var(--color-texto-medio);
+}
+.recalcular {
+  border: 0;
+  background: none;
+  color: var(--color-primario);
+  font: inherit;
+  font-size: var(--texto-xs);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.etiqueta-dato {
+  font-size: var(--texto-xs);
+  color: var(--color-texto-secundario);
+}
+.valor-dato {
+  font-size: var(--texto-m);
+  font-weight: 600;
+}
+.vacio {
+  color: var(--color-texto-apagado);
+  font-weight: 500;
+}
+.parte-leida {
+  margin-right: 12px;
+}
+.insignia {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primario-hover);
+  background: var(--color-primario-suave);
+  padding: 2px 8px;
+  border-radius: var(--radio-pildora);
+}
+.tabla {
+  overflow-x: auto;
+  border: 1px solid var(--color-borde-suave);
+  border-radius: var(--radio-tarjeta);
+  background: var(--color-superficie);
+}
+.tabla-interior {
+  display: grid;
+  min-width: 640px;
+}
+.fila {
+  display: contents;
+}
+.encabezado {
+  padding: 10px 12px;
+  font-size: var(--texto-xs);
+  font-weight: 700;
+  color: var(--color-texto-medio);
+  background: var(--color-superficie-sutil);
+}
+.celda {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: var(--texto-s);
+  border-top: 1px solid var(--color-superficie-sutil);
+  min-width: 0;
+}
+.destacado {
+  font-weight: 700;
+}
+.na {
+  color: var(--color-texto-apagado);
+}
+.entrada-celda,
+.mini-entrada {
+  height: 40px;
+  font-size: var(--texto-s);
+}
+.mini-entrada {
+  width: 64px;
+  padding: 0 8px;
+}
+.inactiva {
+  color: var(--color-texto-apagado);
+  background: var(--color-campo-inactivo);
+}
+.casilla {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-primario);
+}
+.parte-celda {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 6px;
+  font-size: var(--texto-xs);
+  color: var(--color-texto-medio);
+}
+.bandera {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-weight: 600;
+}
+.bandera-punto {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  border-radius: 6px;
+}
+.referencia {
+  border: 1px solid var(--color-info-borde);
+  border-radius: var(--radio-tarjeta);
+  background: var(--color-info-fondo);
+  overflow: hidden;
+}
+.referencia summary {
+  min-height: 48px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  cursor: pointer;
+  color: var(--color-info);
+  font-size: var(--texto-s);
+  font-weight: 600;
+}
+.ref-titulo {
+  flex: 1;
+}
+.ref-etiqueta {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: var(--radio-pildora);
+  background: var(--color-superficie);
+}
+.ref-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px 16px;
+  background: var(--color-superficie);
+}
+.ref-fila {
+  display: grid;
+  gap: 6px;
+}
+.ref-celda {
+  padding: 6px 8px;
+  font-size: var(--texto-xs);
+  line-height: 1.4;
+}
+.ref-encabezado .ref-celda {
+  font-weight: 700;
+}
+.ref-pie {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--color-texto-medio);
+}
+.dolor {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  gap: 4px;
+}
+.dolor-valor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+.dolor-numero {
+  padding: 10px 0;
+  border-radius: 6px;
+  font-weight: 700;
+  color: var(--color-texto);
+}
+.dolor-valor:nth-child(n + 10) .dolor-numero {
+  color: var(--color-superficie);
+}
+.dolor-texto {
+  font-size: 11px;
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--color-texto-medio);
+}
+@media (max-width: 640px) {
+  .campos {
+    grid-template-columns: 1fr;
+  }
+}

@@ -143,14 +143,19 @@ describe('PaginaDetalleHistoria', () => {
     expect(elemento.textContent).not.toContain('Historia guardada como borrador.');
   });
 
-  it('con los datos completos indica que la valoración llega en la próxima fase', async () => {
+  it('SPEC C §6: con los datos completos permite iniciar la valoración', async () => {
     const elemento = await abrir(
       neuroCarlos({ camposFaltantes: [], puedeIniciarValoracion: true, otrasHistorias: [] }),
     );
     const texto = elemento.textContent ?? '';
 
     expect(texto).not.toContain('Historia guardada como borrador.');
-    expect(texto).toContain('Los datos personales están completos.');
+    expect(texto).toContain(
+      'Los datos personales están completos: ya puedes iniciar la valoración.',
+    );
+    const boton = elemento.querySelector<HTMLButtonElement>('.boton-valoracion')!;
+    expect(boton.textContent).toContain('Iniciar valoración');
+    expect(boton.disabled).toBe(false);
     expect(texto).toContain('No tiene historias de otros tipos.');
   });
 
@@ -168,7 +173,8 @@ describe('PaginaDetalleHistoria', () => {
     expect(texto).toContain('Historia archivada el 15/10/2026.');
     // Solo lectura: sin acción de editar.
     expect(elemento.querySelector('.acciones a')).toBeNull();
-    expect(texto).toContain('Completada. Con ella la historia pasó a Activa.');
+    expect(texto).toContain('Finalizada. Con ella la historia pasó a Activa.');
+    expect(elemento.querySelector('a.boton-valoracion')?.textContent).toContain('Ver valoración');
     expect(texto).toContain('Archivada');
   });
 

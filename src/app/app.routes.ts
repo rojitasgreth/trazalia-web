@@ -110,6 +110,14 @@ export const routes: Routes = [
               ),
           },
           {
+            // SPEC C §6: la valoración de la historia (una sola por historia).
+            path: ':id/valoracion',
+            loadComponent: () =>
+              import('./funcionalidades/valoraciones/pagina-valoracion').then(
+                (m) => m.PaginaValoracion,
+              ),
+          },
+          {
             path: ':id',
             loadComponent: () =>
               import('./funcionalidades/historias/pagina-detalle-historia').then(

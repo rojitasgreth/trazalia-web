@@ -238,13 +238,27 @@ dd[data-estado='opcional'] {
 }
 .boton-valoracion {
   height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: var(--radio-tarjeta);
-  background: var(--color-borde-suave);
-  color: var(--color-texto-secundario);
+  background: var(--color-primario);
+  color: var(--color-sobre-primario);
   font: inherit;
   font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.boton-valoracion:disabled {
+  background: var(--color-borde-suave);
+  color: var(--color-texto-secundario);
   cursor: not-allowed;
+}
+.mensaje-error {
+  margin: 0;
+  color: var(--color-peligro);
+  font-size: var(--texto-xs);
 }
 .otra {
   display: flex;
