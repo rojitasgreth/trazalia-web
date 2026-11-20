@@ -1,9 +1,18 @@
 import type {
+  DatosInfantiles,
   DatosPersonales,
   DatosRepresentante,
   ModalidadAtencion,
   TipoHistoria,
 } from '../../../core/historias/historias.model';
+import {
+  ANTECEDENTES_MATERNOS,
+  CAMPOS_INFANTILES_DEF,
+  DATOS_AL_NACER,
+  esInfantilExigible,
+  EXAMENES_REALIZADOS,
+  type CampoInfantilDef,
+} from './datos-infantiles';
 
 // Listas del prototipo B (componente del formulario) y SPEC §8. Las entidades
 // federales son las 24 de Venezuela (el prototipo muestra una muestra).
@@ -80,16 +89,29 @@ export interface SeccionDef {
   titulo: string;
   campos: CampoDef[];
   nota?: string;
+  /** v1.6 §8.4: campos infantiles de la sección (grupo `datosInfantiles`). */
+  infantiles?: readonly CampoInfantilDef[];
 }
 
 const TELEFONO_PH = '04125550000';
 
 function identificacion(tipo: TipoHistoria): CampoDef[] {
+  if (tipo === 'REHAB_INFANTIL') {
+    // v1.6 (prototipo B): nombre, sexo y F.N.; la edad va como edad
+    // cronológica, entre los datos al nacer.
+    return [
+      { tipo: 'texto', clave: 'nombre', etiqueta: 'Nombre del niño o niña', obligatorio: true },
+      { tipo: 'texto', clave: 'apellido', etiqueta: 'Apellido', obligatorio: true },
+      { tipo: 'documento', clave: 'documento', etiqueta: 'Documento' },
+      { tipo: 'sexo', clave: 'sexo', etiqueta: 'Sexo' },
+      { tipo: 'fecha', clave: 'fechaNacimiento', etiqueta: 'F.N. (fecha de nacimiento)' },
+    ];
+  }
   const campos: CampoDef[] = [
     {
       tipo: 'texto',
       clave: 'nombre',
-      etiqueta: tipo === 'REHAB_INFANTIL' ? 'Nombre del niño o niña' : 'Nombre',
+      etiqueta: 'Nombre',
       obligatorio: true,
     },
     { tipo: 'texto', clave: 'apellido', etiqueta: 'Apellido', obligatorio: true },
@@ -124,7 +146,7 @@ function contacto(parentesco: string): CampoDef[] {
   ];
 }
 
-const direccion: CampoDef[] = [
+export const DIRECCION: CampoDef[] = [
   { tipo: 'seleccion', clave: 'dirEstado', etiqueta: 'Estado', opciones: ENTIDADES_FEDERALES },
   { tipo: 'texto', clave: 'dirMunicipio', etiqueta: 'Municipio' },
   { tipo: 'texto', clave: 'dirParroquia', etiqueta: 'Parroquia' },
@@ -165,9 +187,11 @@ export function seccionesDe(
   // A domicilio se necesita la dirección; Adulto mayor e Infantil ya la piden.
   const sinDireccion = tipo === 'TRAUMA_ADULTO' || tipo === 'NEURO_ADULTO';
   if (modalidad === 'DOMICILIO' && sinDireccion) {
-    extra.push({ titulo: 'Dirección del paciente', campos: direccion });
+    extra.push({ titulo: 'Dirección del paciente', campos: DIRECCION });
   }
-  secciones.splice(1, 0, ...extra);
+  // En infantil la modalidad sigue a los datos del niño o niña.
+  const posicion = tipo === 'REHAB_INFANTIL' ? 3 : 1;
+  secciones.splice(posicion, 0, ...extra);
   return secciones;
 }
 
@@ -260,7 +284,7 @@ function seccionesBase(tipo: TipoHistoria): SeccionDef[] {
             telefono,
           ],
         },
-        { titulo: 'Residencia', campos: direccion },
+        { titulo: 'Residencia', campos: DIRECCION },
         {
           titulo: 'Familiar de contacto',
           campos: contacto('Parentesco'),
@@ -268,22 +292,30 @@ function seccionesBase(tipo: TipoHistoria): SeccionDef[] {
         },
       ];
     case 'REHAB_INFANTIL':
+      // v1.6 (orden de la ficha): el representante, con su dirección, va antes
+      // (lo pinta la página); luego teléfonos y correo, antecedentes maternos,
+      // el niño o niña con sus datos al nacer y los exámenes realizados.
       return [
-        { titulo: 'Niño o niña', campos: identificacion(tipo) },
-        { titulo: 'Dirección del hogar', campos: direccion },
         {
-          titulo: 'Contacto',
+          titulo: 'Teléfonos y correo',
           campos: [
-            { tipo: 'tel', clave: 'telefono', etiqueta: 'Teléfono', placeholder: TELEFONO_PH },
+            { tipo: 'tel', clave: 'telefono', etiqueta: 'Teléfonos', placeholder: TELEFONO_PH },
             {
               tipo: 'email',
               clave: 'correo',
-              etiqueta: 'Correo electrónico',
+              etiqueta: 'Correo',
               placeholder: 'correo@ejemplo.com',
             },
           ],
-          nota: 'Un solo contacto',
         },
+        {
+          titulo: 'Antecedentes maternos',
+          campos: [],
+          infantiles: ANTECEDENTES_MATERNOS,
+          nota: 'Obligatorios para iniciar la valoración',
+        },
+        { titulo: 'Niño o niña', campos: identificacion(tipo), infantiles: DATOS_AL_NACER },
+        { titulo: 'Exámenes realizados', campos: [], infantiles: EXAMENES_REALIZADOS },
       ];
   }
 }
@@ -296,7 +328,7 @@ export const PARENTESCOS = [
 export interface CampoRepresentanteDef {
   clave: keyof DatosRepresentante;
   etiqueta: string;
-  tipo: 'texto' | 'fecha' | 'seleccion' | 'parentesco';
+  tipo: 'texto' | 'numero' | 'seleccion' | 'parentesco';
   opciones?: readonly string[];
   placeholder?: string;
 }
@@ -307,7 +339,7 @@ export const CAMPOS_REPRESENTANTE: readonly CampoRepresentanteDef[] = [
   { clave: 'nombre', etiqueta: 'Nombre', tipo: 'texto' },
   { clave: 'apellido', etiqueta: 'Apellido', tipo: 'texto' },
   { clave: 'cedula', etiqueta: 'Cédula', tipo: 'texto', placeholder: 'Número de cédula' },
-  { clave: 'fechaNacimiento', etiqueta: 'Fecha de nacimiento', tipo: 'fecha' },
+  { clave: 'edad', etiqueta: 'Edad', tipo: 'numero', placeholder: 'años' },
   { clave: 'estadoCivil', etiqueta: 'Estado civil', tipo: 'seleccion', opciones: ESTADOS_CIVILES },
   {
     clave: 'gradoInstruccion',
@@ -326,34 +358,54 @@ function etiquetaFaltante(campo: CampoDef): string {
   return campo.tipo === 'documento' ? 'Documento o "Sin documento"' : campo.etiqueta;
 }
 
+function vacio(valor: unknown): boolean {
+  return (
+    valor === null ||
+    valor === undefined ||
+    valor === '' ||
+    (Array.isArray(valor) && valor.length === 0)
+  );
+}
+
+/** v1.6: en infantil la dirección del hogar se pide junto al representante. */
+function direccionDelRepresentante(tipo: TipoHistoria): CampoDef[] {
+  return tipo === 'REHAB_INFANTIL' ? DIRECCION : [];
+}
+
 /**
- * Espejo de la regla del backend (SPEC §9.1): claves de los datos que faltan
- * para completar la sección personal. El backend es la referencia; esto solo
- * alimenta el panel de progreso mientras se escribe.
+ * Espejo de la regla del backend (SPEC §9.1 y v1.6 RF-028): claves de los datos
+ * que faltan para completar la sección personal. El backend es la referencia;
+ * esto solo alimenta el panel de progreso mientras se escribe.
  */
 export function camposFaltantes(
   tipo: TipoHistoria,
   datos: DatosPersonales,
   representante: DatosRepresentante | null = null,
+  infantiles: DatosInfantiles | null = null,
 ): string[] {
-  const secciones = seccionesDe(tipo, datos.modalidad);
   const faltantes: string[] = [];
   // RF-015: en infantil el representante es obligatorio para completarlos.
   if (tipo === 'REHAB_INFANTIL') {
     for (const campo of CAMPOS_REPRESENTANTE) {
-      if (!representante?.[campo.clave]) faltantes.push(`representante.${campo.clave}`);
+      if (vacio(representante?.[campo.clave])) faltantes.push(`representante.${campo.clave}`);
     }
   }
-  for (const seccion of secciones) {
-    for (const campo of seccion.campos) {
-      if (NO_EXIGIBLES.has(campo.clave) || campo.clave === 'edad') continue;
-      if (campo.clave === 'documento') {
-        if (!datos.cedula && !datos.sinDocumento) faltantes.push('documento');
-        continue;
-      }
-      const valor = datos[campo.clave];
-      if (valor === null || valor === '' || (Array.isArray(valor) && valor.length === 0)) {
-        faltantes.push(campo.clave);
+  const campos = [
+    ...direccionDelRepresentante(tipo),
+    ...seccionesDe(tipo, datos.modalidad).flatMap((s) => s.campos),
+  ];
+  for (const campo of campos) {
+    if (NO_EXIGIBLES.has(campo.clave)) continue;
+    if (campo.clave === 'documento') {
+      if (!datos.cedula && !datos.sinDocumento) faltantes.push('documento');
+      continue;
+    }
+    if (vacio(datos[campo.clave as keyof DatosPersonales])) faltantes.push(campo.clave);
+  }
+  if (tipo === 'REHAB_INFANTIL') {
+    for (const campo of CAMPOS_INFANTILES_DEF) {
+      if (esInfantilExigible(campo) && vacio(infantiles?.[campo.clave])) {
+        faltantes.push(`infantil.${campo.clave}`);
       }
     }
   }
@@ -365,19 +417,28 @@ export function totalExigibles(
   tipo: TipoHistoria,
   modalidad: ModalidadAtencion | null = null,
 ): number {
-  const representante = tipo === 'REHAB_INFANTIL' ? CAMPOS_REPRESENTANTE.length : 0;
+  const infantil = tipo === 'REHAB_INFANTIL';
+  const representante = infantil ? CAMPOS_REPRESENTANTE.length : 0;
+  const infantiles = infantil ? CAMPOS_INFANTILES_DEF.filter(esInfantilExigible).length : 0;
   return (
     representante +
-    seccionesDe(tipo, modalidad)
-      .flatMap((s) => s.campos)
-      .filter((c) => !NO_EXIGIBLES.has(c.clave)).length
+    infantiles +
+    [
+      ...direccionDelRepresentante(tipo),
+      ...seccionesDe(tipo, modalidad).flatMap((s) => s.campos),
+    ].filter((c) => !NO_EXIGIBLES.has(c.clave)).length
   );
+}
+
+function resumir(titulo: string, etiquetas: string[], lineas: string[]): void {
+  if (etiquetas.length >= 3) lineas.push(`${titulo} (${etiquetas.length} datos)`);
+  else lineas.push(...etiquetas);
 }
 
 /**
  * Lista legible de faltantes (B07/B20): una sección con 3 o más faltantes se
  * resume como "Sección (n datos)"; más de 6 entradas se recortan a 5.
- * Las claves `representante.*` se agrupan bajo "Representante".
+ * El representante y su dirección se agrupan bajo "Representante".
  */
 export function resumirFaltantes(
   tipo: TipoHistoria,
@@ -387,20 +448,24 @@ export function resumirFaltantes(
   const pendientes = new Set(claves);
   const lineas: string[] = [];
 
-  const representante = claves.filter((c) => c.startsWith('representante.'));
-  if (representante.length >= 3) {
-    lineas.push(`Representante (${representante.length} datos)`);
-  } else {
-    for (const clave of representante) {
-      const campo = CAMPOS_REPRESENTANTE.find((c) => `representante.${c.clave}` === clave);
-      lineas.push(`Representante: ${campo?.etiqueta.toLowerCase() ?? clave}`);
-    }
-  }
+  const representante = [
+    ...CAMPOS_REPRESENTANTE.filter((c) => pendientes.has(`representante.${c.clave}`)).map(
+      (c) => `Representante: ${c.etiqueta.toLowerCase()}`,
+    ),
+    ...direccionDelRepresentante(tipo)
+      .filter((c) => pendientes.has(c.clave))
+      .map((c) => `Dirección: ${c.etiqueta.toLowerCase()}`),
+  ];
+  resumir('Representante', representante, lineas);
 
   for (const seccion of seccionesDe(tipo, modalidad)) {
-    const faltan = seccion.campos.filter((c) => pendientes.has(c.clave));
-    if (faltan.length >= 3) lineas.push(`${seccion.titulo} (${faltan.length} datos)`);
-    else lineas.push(...faltan.map(etiquetaFaltante));
+    const etiquetas = [
+      ...seccion.campos.filter((c) => pendientes.has(c.clave)).map(etiquetaFaltante),
+      ...(seccion.infantiles ?? [])
+        .filter((c) => pendientes.has(`infantil.${c.clave}`))
+        .map((c) => c.etiqueta),
+    ];
+    resumir(seccion.titulo, etiquetas, lineas);
   }
 
   return lineas.length > 6 ? [...lineas.slice(0, 5), `y ${lineas.length - 5} datos más`] : lineas;

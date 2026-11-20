@@ -54,6 +54,7 @@ function neuroCarlos(cambios: Partial<HistoriaDetalle> = {}): HistoriaDetalle {
       idCentro: null,
     },
     representante: null,
+    datosInfantiles: null,
     camposFaltantes: ['fuenteInformacion', 'nivelEducativo'],
     puedeIniciarValoracion: false,
     tieneRegistrosClinicos: false,
@@ -216,7 +217,7 @@ describe('PaginaDetalleHistoria', () => {
           nombre: 'Laura',
           apellido: 'Martínez',
           cedula: null,
-          fechaNacimiento: '1991-07-30',
+          edad: 35,
           estadoCivil: null,
           gradoInstruccion: null,
           ocupacion: null,
@@ -228,8 +229,7 @@ describe('PaginaDetalleHistoria', () => {
 
     expect(texto).toContain('Madre');
     expect(texto).toContain('Laura');
-    expect(texto).toContain('30/07/1991');
-    expect(texto).toMatch(/\d+ años/);
+    expect(texto).toContain('35 años');
     expect(texto).toContain('Representante: cédula');
   });
 

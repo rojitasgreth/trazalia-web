@@ -44,11 +44,65 @@ export interface DatosRepresentante {
   nombre: string | null;
   apellido: string | null;
   cedula: string | null;
-  fechaNacimiento: string | null;
+  /** v1.6: la ficha pide la edad (años), no la fecha de nacimiento. */
+  edad: number | null;
   estadoCivil: string | null;
   gradoInstruccion: string | null;
   ocupacion: string | null;
 }
+
+/**
+ * SPEC B v1.6 §8.4: antecedentes maternos, datos al nacer y exámenes de la
+ * ficha infantil. Las edades cronológica y corregida solo traen valor si el
+ * fisioterapeuta corrigió la calculada.
+ */
+export interface DatosInfantiles {
+  controlPrenatal: string | null;
+  controlPrenatalDesde: string | null;
+  gestas: number | null;
+  formulaP: number | null;
+  formulaF: number | null;
+  formulaC: number | null;
+  formulaA: number | null;
+  infeccionesUrinarias: string | null;
+  hemorragias: string | null;
+  infeccionesVaginales: string | null;
+  embarazoOtras: string | null;
+  enfermedadBase: string | null;
+  medicamentos: string | null;
+  consumoAlcohol: string | null;
+  consumoTabaco: string | null;
+  consumoOtros: string | null;
+  tipoSangre: string | null;
+  complicacionesMaternas: string | null;
+  edadGestacional: number | null;
+  edadCronologica: string | null;
+  edadCorregida: string | null;
+  peso: string | null;
+  talla: string | null;
+  respiro: string | null;
+  lloro: string | null;
+  apgar: string | null;
+  requirioO2: string | null;
+  fototerapia: string | null;
+  transfusiones: string | null;
+  sdr: string | null;
+  sepsisNeonatal: string | null;
+  ictericia: string | null;
+  anemia: string | null;
+  neonatalOtros: string | null;
+  vacunas: string | null;
+  alimentacion: string | null;
+  pesquisaNeonatal: string | null;
+  emisionesOtoacusticas: string | null;
+  ecoCerebral: string | null;
+  ecoAbdominal: string | null;
+  evaluadoCardiologia: string | null;
+  evaluadoNeurologia: string | null;
+  evaluadoOftalmologia: string | null;
+}
+
+export type CampoInfantil = keyof DatosInfantiles;
 
 export interface HistoriaResumen {
   idHistoria: string;
@@ -79,6 +133,8 @@ export interface HistoriaDelPaciente {
 export interface HistoriaDetalle extends HistoriaResumen {
   datos: DatosPersonales;
   representante: DatosRepresentante | null;
+  /** Solo en Rehabilitación infantil. */
+  datosInfantiles: DatosInfantiles | null;
   /** Claves de campo (`documento`, `telefono`, `representante.nombre`…). */
   camposFaltantes: string[];
   puedeIniciarValoracion: boolean;
@@ -113,6 +169,7 @@ export type CrearHistoriaPayload = Partial<DatosPersonales> &
     tipo: TipoHistoria;
     /** Solo Rehabilitación infantil (SPEC §8.4). */
     representante?: DatosRepresentante | null;
+    datosInfantiles?: DatosInfantiles | null;
   };
 
 /** Cuerpo de un 409 al crear: duplicado del mismo tipo (RF-010). */
@@ -151,6 +208,7 @@ export type ResultadoCoincidencia =
 export type ActualizarHistoriaPayload = Partial<DatosPersonales> &
   Pick<DatosPersonales, 'nombre' | 'apellido'> & {
     representante?: DatosRepresentante | null;
+    datosInfantiles?: DatosInfantiles | null;
     /** RF-014: aplicar los cambios compartidos a las demás historias no archivadas. */
     propagar: boolean;
   };

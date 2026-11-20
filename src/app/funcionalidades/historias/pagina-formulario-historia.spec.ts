@@ -280,10 +280,17 @@ describe('PaginaFormularioHistoria', () => {
     const titulos = Array.from(elemento().querySelectorAll('.seccion h2')).map(
       (h) => h.textContent,
     );
-    expect(titulos[0]).toBe('Representante');
-    expect(titulos[1]).toBe('Niño o niña');
+    // v1.6: orden de la ficha infantil.
+    expect(titulos).toEqual([
+      'Representante',
+      'Teléfonos y correo',
+      'Antecedentes maternos',
+      'Niño o niña',
+      'Modalidad de atención',
+      'Exámenes realizados',
+    ]);
     expect(elemento().textContent).toContain('Puedes guardar sin representante');
-    expect(elemento().textContent).toContain('0 de 17');
+    expect(elemento().textContent).toContain('0 de 53');
 
     // RF-004: sin documento exige la fecha de nacimiento.
     rellenar(pagina, { nombre: 'Sofía', apellido: 'Martínez', sinDocumento: true });
@@ -303,6 +310,7 @@ describe('PaginaFormularioHistoria', () => {
       nacionalidad: null,
       cedula: null,
       representante: null,
+      datosInfantiles: null,
     });
     peticion.flush({ historia: { idHistoria: 'h4' } });
   });
@@ -316,12 +324,12 @@ describe('PaginaFormularioHistoria', () => {
         parentesco: 'PADRE',
         nombre: ' José ',
         cedula: '12345678',
-        fechaNacimiento: '1988-01-20',
+        edad: 38,
       },
     });
 
-    expect((elemento().querySelector('#representante-edad') as HTMLInputElement).value).toMatch(
-      /años$/,
+    expect((elemento().querySelector('#representante-edad') as HTMLInputElement).type).toBe(
+      'number',
     );
     expect(elemento().textContent).not.toContain('Puedes guardar sin representante');
 
@@ -332,12 +340,55 @@ describe('PaginaFormularioHistoria', () => {
       nombre: 'José',
       apellido: null,
       cedula: '12345678',
-      fechaNacimiento: '1988-01-20',
+      edad: 38,
       estadoCivil: null,
       gradoInstruccion: null,
       ocupacion: null,
     });
     peticion.flush({ historia: { idHistoria: 'h5' } });
+  });
+
+  it('v1.6 §8.4: envía los datos infantiles y calcula las edades cronológica y corregida', async () => {
+    const pagina = await abrir('REHAB_INFANTIL');
+    rellenar(pagina, {
+      nombre: 'Mateo',
+      apellido: 'Rivas',
+      fechaNacimiento: '2025-01-15',
+      dirEstado: 'Lara',
+      datosInfantiles: {
+        gestas: 2,
+        edadGestacional: 36,
+        vacunas: ' Completas ',
+        alimentacion: 'LME',
+      },
+    });
+
+    const cronologica = elemento().querySelector<HTMLInputElement>('#infantil-edadCronologica')!;
+    const corregida = elemento().querySelector<HTMLInputElement>('#infantil-edadCorregida')!;
+    expect(cronologica.value).toMatch(/año|mes/);
+    expect(corregida.value).toMatch(/año|mes/);
+    expect(corregida.value).not.toBe(cronologica.value);
+    expect(elemento().querySelector('#dirEstado')).not.toBeNull();
+
+    // Una corrección manual sustituye a la edad calculada.
+    corregida.value = '1 año 7 meses';
+    corregida.dispatchEvent(new Event('input'));
+    harness.fixture.detectChanges();
+
+    await enviar();
+    const peticion = http.expectOne('/api/v1/historias');
+    expect(peticion.request.body).toMatchObject({
+      dirEstado: 'Lara',
+      datosInfantiles: {
+        gestas: 2,
+        edadGestacional: 36,
+        vacunas: 'Completas',
+        alimentacion: 'LME',
+        edadCorregida: '1 año 7 meses',
+        edadCronologica: null,
+      },
+    });
+    peticion.flush({ historia: { idHistoria: 'h6' } });
   });
 
   it('marca una cédula de representante con formato inválido', async () => {

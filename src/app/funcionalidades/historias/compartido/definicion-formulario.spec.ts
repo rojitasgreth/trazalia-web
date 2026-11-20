@@ -45,7 +45,8 @@ describe('definición del formulario por tipo (SPEC §8)', () => {
     expect(claves('NEURO_ADULTO')).not.toContain('demandasFisicas');
     expect(claves('TRAUMA_ADULTO')).toContain('demandasFisicas');
     expect(claves('ADULTO_MAYOR')).toEqual(expect.arrayContaining(['dirEstado', 'estadoCivil']));
-    expect(seccionesDe('REHAB_INFANTIL')[0]!.campos[0]!.etiqueta).toBe('Nombre del niño o niña');
+    const nino = seccionesDe('REHAB_INFANTIL').find((s) => s.titulo === 'Niño o niña');
+    expect(nino?.campos[0]?.etiqueta).toBe('Nombre del niño o niña');
   });
 
   it('calcula los faltantes como el backend (B20: a Neurología le faltan fuente y nivel)', () => {
@@ -65,7 +66,7 @@ describe('definición del formulario por tipo (SPEC §8)', () => {
         nombre: 'Laura',
         apellido: 'Martínez',
         cedula: '18220417',
-        fechaNacimiento: '1991-07-30',
+        edad: 35,
         estadoCivil: 'Casado(a)',
         gradoInstruccion: 'Universitario',
         ocupacion: 'Docente',
@@ -81,9 +82,9 @@ describe('definición del formulario por tipo (SPEC §8)', () => {
     expect(totalExigibles('TRAUMA_ADULTO')).toBe(11);
     expect(totalExigibles('TRAUMA_ADULTO', 'CENTRO')).toBe(12);
     expect(totalExigibles('TRAUMA_ADULTO', 'DOMICILIO')).toBe(15);
-    // Infantil: 9 propios + 8 del representante (RF-015); ya pide la dirección.
-    expect(totalExigibles('REHAB_INFANTIL')).toBe(17);
-    expect(totalExigibles('REHAB_INFANTIL', 'DOMICILIO')).toBe(17);
+    // Infantil: 9 propios + 8 del representante (RF-015) + 36 infantiles (v1.6 RF-028).
+    expect(totalExigibles('REHAB_INFANTIL')).toBe(53);
+    expect(totalExigibles('REHAB_INFANTIL', 'DOMICILIO')).toBe(53);
   });
 
   it('resume los faltantes por sección y recorta las listas largas', () => {

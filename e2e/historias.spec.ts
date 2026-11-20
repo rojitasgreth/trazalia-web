@@ -58,6 +58,7 @@ const DETALLE = {
     idCentro: null,
   },
   representante: null,
+  datosInfantiles: null,
   camposFaltantes: [
     'dominancia',
     'ocupacion',
@@ -439,4 +440,55 @@ test('v1.4 B30/B31: registra un centro nuevo cuando no existe', async ({ page })
   await page.getByRole('button', { name: 'Guardar borrador' }).click();
   await expect(page).toHaveURL(new RegExp(`/historias/${RESUMEN.idHistoria}$`));
   expect(cuerpo()).toMatchObject({ modalidad: 'CENTRO', idCentro: SANTA_SOFIA.idCentro });
+});
+
+test('v1.6: la ficha infantil sigue el orden de la ficha y envía los datos infantiles', async ({
+  page,
+}) => {
+  await iniciarSesionComo(page, FISIO);
+  let cuerpo: Record<string, unknown> | undefined;
+  await page.route('**/api/v1/historias', async (ruta) => {
+    if (ruta.request().method() !== 'POST') return ruta.fallback();
+    cuerpo = ruta.request().postDataJSON() as Record<string, unknown>;
+    await ruta.fulfill({ status: 201, json: { historia: DETALLE } });
+  });
+  await page.route(`**/api/v1/historias/${RESUMEN.idHistoria}`, (ruta) =>
+    ruta.fulfill({ json: { historia: DETALLE } }),
+  );
+
+  await page.goto('/historias/nueva/REHAB_INFANTIL');
+  await expect(page.locator('.seccion h2')).toHaveText([
+    'Representante',
+    'Teléfonos y correo',
+    'Antecedentes maternos',
+    'Niño o niña',
+    'Modalidad de atención',
+    'Exámenes realizados',
+  ]);
+
+  await page.locator('#representante-edad').fill('34');
+  await page.locator('#dirEstado').selectOption('Lara');
+  await page.locator('#nombre').fill('Sofía');
+  await page.locator('#apellido').fill('Martínez');
+  await page.getByText('Sin documento', { exact: true }).click();
+  await page.locator('#fechaNacimiento').fill('2025-03-10');
+  await page.locator('#infantil-gestas').fill('2');
+  await page.locator('#infantil-edadGestacional').fill('36');
+  await expect(page.locator('#infantil-edadCorregida')).not.toHaveValue('');
+  await page.getByText('LM + F', { exact: true }).click();
+  await page.locator('#infantil-pesquisaNeonatal').fill('Normal');
+  await page.getByRole('button', { name: 'Guardar borrador' }).click();
+
+  await expect(page).toHaveURL(new RegExp(`/historias/${RESUMEN.idHistoria}$`));
+  expect(cuerpo).toMatchObject({
+    tipo: 'REHAB_INFANTIL',
+    dirEstado: 'Lara',
+    representante: { edad: 34 },
+    datosInfantiles: {
+      gestas: 2,
+      edadGestacional: 36,
+      alimentacion: 'LM + F',
+      pesquisaNeonatal: 'Normal',
+    },
+  });
 });

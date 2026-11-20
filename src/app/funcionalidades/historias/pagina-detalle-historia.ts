@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { HistoriasApi } from '../../core/historias/historias-api';
 import type {
+  DatosPersonales,
   HistoriaDelPaciente,
   HistoriaDetalle,
   TipoHistoria,
@@ -12,6 +13,7 @@ import type {
 import { DialogoGestion, type AccionGestion } from './compartido/dialogo-gestion';
 import {
   CAMPOS_REPRESENTANTE,
+  DIRECCION,
   MODALIDADES,
   PARENTESCOS,
   SEXOS,
@@ -19,6 +21,7 @@ import {
   seccionesDe,
   type CampoDef,
 } from './compartido/definicion-formulario';
+import { edadCalculada, type CampoInfantilDef } from './compartido/datos-infantiles';
 import {
   TIPOS,
   calcularEdad,
@@ -217,7 +220,7 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
 
           <aside class="lateral">
             <section class="panel" aria-labelledby="titulo-valoracion">
-              <h2 id="titulo-valoracion">Primera valoración</h2>
+              <h2 id="titulo-valoracion">Valoración</h2>
               @if (h.estado === 'ACTIVA') {
                 <p>
                   Completada. Con ella la historia pasó a Activa. Las valoraciones se diseñan en la
@@ -237,11 +240,7 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
                 </p>
               }
               <button type="button" class="boton-valoracion" disabled>
-                {{
-                  h.estado === 'ACTIVA'
-                    ? 'Ver valoración (próxima fase)'
-                    : 'Iniciar primera valoración'
-                }}
+                {{ h.estado === 'ACTIVA' ? 'Ver valoración (próxima fase)' : 'Iniciar valoración' }}
               </button>
             </section>
 
@@ -391,20 +390,26 @@ export class PaginaDetalleHistoria {
   private grupoRepresentante(h: HistoriaDetalle): Grupo {
     const r = h.representante;
     if (!r) return { titulo: 'Representante', datos: [], faltan: 0, sinRegistrar: true };
-    const datos: Dato[] = CAMPOS_REPRESENTANTE.map((campo) => {
+    const faltantes = new Set(h.camposFaltantes);
+    const datos: Dato[] = [];
+    for (const campo of CAMPOS_REPRESENTANTE) {
       const crudo = r[campo.clave];
       const valor =
         campo.tipo === 'parentesco'
           ? (PARENTESCOS.find((p) => p.valor === crudo)?.etiqueta ?? '')
-          : campo.tipo === 'fecha'
-            ? formatearFecha(crudo)
-            : (crudo ?? '');
-      return valor
-        ? { etiqueta: campo.etiqueta, valor, estado: 'lleno' }
-        : { etiqueta: campo.etiqueta, valor: 'Falta', estado: 'falta' };
-    });
-    const edad = calcularEdad(r.fechaNacimiento, this.ahora);
-    if (edad) datos.splice(5, 0, { etiqueta: 'Edad', valor: edad, estado: 'lleno' });
+          : campo.clave === 'edad' && typeof crudo === 'number'
+            ? `${crudo} ${crudo === 1 ? 'año' : 'años'}`
+            : String(crudo ?? '');
+      datos.push(
+        valor
+          ? { etiqueta: campo.etiqueta, valor, estado: 'lleno' }
+          : { etiqueta: campo.etiqueta, valor: 'Falta', estado: 'falta' },
+      );
+      // v1.6: la dirección del hogar se registra junto al representante.
+      if (campo.clave === 'estadoCivil') {
+        datos.push(...DIRECCION.map((c) => this.dato(h, c, faltantes)));
+      }
+    }
     return {
       titulo: 'Representante',
       datos,
@@ -414,9 +419,12 @@ export class PaginaDetalleHistoria {
 
   private gruposPersonales(h: HistoriaDetalle, faltantes: Set<string>): Grupo[] {
     return seccionesDe(h.tipo, h.datos.modalidad).map((seccion) => {
-      const datos = seccion.campos
-        .filter((c) => !CAMPOS_EN_CABECERA.has(c.clave))
-        .map((c) => this.dato(h, c, faltantes));
+      const datos = [
+        ...seccion.campos
+          .filter((c) => !CAMPOS_EN_CABECERA.has(c.clave))
+          .map((c) => this.dato(h, c, faltantes)),
+        ...(seccion.infantiles ?? []).map((c) => this.datoInfantil(h, c, faltantes)),
+      ];
       return {
         titulo: seccion.titulo,
         datos,
@@ -429,6 +437,27 @@ export class PaginaDetalleHistoria {
     const valor = this.valorDe(h, campo);
     if (valor) return { etiqueta: campo.etiqueta, valor, estado: 'lleno' };
     if (faltantes.has(campo.clave))
+      return { etiqueta: campo.etiqueta, valor: 'Falta', estado: 'falta' };
+    return { etiqueta: `${campo.etiqueta} (opcional)`, valor: 'No registrado', estado: 'opcional' };
+  }
+
+  /** v1.6 §8.4: antecedentes maternos, datos al nacer y exámenes. */
+  private datoInfantil(h: HistoriaDetalle, campo: CampoInfantilDef, faltantes: Set<string>): Dato {
+    const crudo = h.datosInfantiles?.[campo.clave] ?? null;
+    const valor =
+      campo.tipo === 'edad'
+        ? (typeof crudo === 'string' && crudo) ||
+          edadCalculada(
+            campo.clave,
+            h.datos.fechaNacimiento,
+            h.datosInfantiles?.edadGestacional ?? null,
+            this.ahora,
+          )
+        : crudo === null
+          ? ''
+          : String(crudo);
+    if (valor) return { etiqueta: campo.etiqueta, valor, estado: 'lleno' };
+    if (faltantes.has(`infantil.${campo.clave}`))
       return { etiqueta: campo.etiqueta, valor: 'Falta', estado: 'falta' };
     return { etiqueta: `${campo.etiqueta} (opcional)`, valor: 'No registrado', estado: 'opcional' };
   }
@@ -454,7 +483,7 @@ export class PaginaDetalleHistoria {
           ? `${h.centro.nombre} · ${h.centro.parroquia}, ${h.centro.municipio}, ${h.centro.estado}`
           : '';
       default:
-        return d[campo.clave] ?? '';
+        return (d[campo.clave as keyof DatosPersonales] as string | null) ?? '';
     }
   }
 

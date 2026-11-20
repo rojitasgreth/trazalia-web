@@ -3,6 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
+  FormControl,
   ReactiveFormsModule,
   Validators,
   type AbstractControl,
@@ -11,7 +12,9 @@ import {
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HistoriasApi } from '../../core/historias/historias-api';
 import type {
+  CampoInfantil,
   CrearHistoriaPayload,
+  DatosInfantiles,
   DatosPersonales,
   DatosRepresentante,
   ErrorDuplicado,
@@ -25,6 +28,8 @@ import type {
 import type { CentroMedico } from '../../core/centros/centros.model';
 import {
   CAMPOS_REPRESENTANTE,
+  DIRECCION,
+  ENTIDADES_FEDERALES,
   MODALIDADES,
   PARENTESCOS,
   SEXOS,
@@ -41,6 +46,12 @@ import {
   type PlanAutocompletado,
 } from './compartido/autocompletado';
 import { BuscadorCentro } from './compartido/buscador-centro';
+import {
+  CAMPOS_INFANTILES_DEF,
+  CLAVES_INFANTILES,
+  edadCalculada,
+  type CampoInfantilDef,
+} from './compartido/datos-infantiles';
 import { DialogoAutocompletar } from './compartido/dialogo-autocompletar';
 import { DialogoNuevoCentro } from './compartido/dialogo-nuevo-centro';
 import { DialogoDuplicado } from './compartido/dialogo-duplicado';
@@ -62,6 +73,19 @@ type CampoIdentificacion = ErrorValidacion['errores'][number]['campo'];
 interface Propuesta {
   historia: HistoriaResumen;
   plan: PlanAutocompletado;
+}
+
+// v1.6 §8.4: el [type] dinámico de los campos numéricos hace que Angular use el
+// accesor de texto, así que el valor puede llegar como cadena.
+const CLAVES_NUMERICAS = new Set(
+  CAMPOS_INFANTILES_DEF.filter((c) => c.tipo === 'numero').map((c) => c.clave),
+);
+
+function aEntero(valor: unknown): number | null {
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : null;
+  if (typeof valor !== 'string' || !valor.trim()) return null;
+  const numero = Number(valor);
+  return Number.isInteger(numero) ? numero : null;
 }
 
 // Celular o teléfono: solo dígitos, máximo 11 (p. ej. 04125550000).
@@ -288,10 +312,10 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                       @default {
                         <input
                           [id]="'representante-' + campo.clave"
-                          [type]="campo.tipo === 'fecha' ? 'date' : 'text'"
+                          [type]="campo.tipo === 'numero' ? 'number' : 'text'"
                           [formControlName]="campo.clave"
                           [placeholder]="campo.placeholder ?? ''"
-                          [attr.max]="campo.tipo === 'fecha' ? hoy : null"
+                          [attr.min]="campo.tipo === 'numero' ? 0 : null"
                           [attr.inputmode]="campo.clave === 'cedula' ? 'numeric' : null"
                           [attr.maxlength]="campo.clave === 'cedula' ? 9 : null"
                           [attr.aria-invalid]="
@@ -312,22 +336,25 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                       }
                     }
                   </div>
-                  @if (campo.clave === 'fechaNacimiento') {
-                    <div class="campo">
-                      <label for="representante-edad">Edad</label>
-                      <input
-                        id="representante-edad"
-                        type="text"
-                        readonly
-                        class="calculado"
-                        placeholder="—"
-                        [value]="edadRepresentante()"
-                        aria-describedby="representante-edad-msg"
-                      />
-                      <span id="representante-edad-msg" class="mensaje"
-                        >Se calcula con la fecha de nacimiento.</span
-                      >
-                    </div>
+                  @if (campo.clave === 'estadoCivil') {
+                    <!-- v1.6 (ficha infantil): la dirección se registra junto al representante. -->
+                    @for (d of direccion; track d.clave) {
+                      <div class="campo" [class.completo]="'completo' in d && d.completo">
+                        <label [for]="d.clave">{{
+                          d.clave === 'dirEstado' ? 'Dirección: estado' : d.etiqueta
+                        }}</label>
+                        @if (d.tipo === 'seleccion') {
+                          <select [id]="d.clave" [formControl]="controlDireccion(d)">
+                            <option value="">Selecciona</option>
+                            @for (opcion of entidades; track opcion) {
+                              <option [value]="opcion">{{ opcion }}</option>
+                            }
+                          </select>
+                        } @else {
+                          <input [id]="d.clave" type="text" [formControl]="controlDireccion(d)" />
+                        }
+                      </div>
+                    }
                   }
                 }
               </div>
@@ -570,6 +597,71 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                     }
                   </div>
                 }
+                @if (seccion.infantiles) {
+                  <!-- v1.6 §8.4: antecedentes maternos, datos al nacer y exámenes. -->
+                  <ng-container formGroupName="datosInfantiles">
+                    @for (c of seccion.infantiles; track c.clave) {
+                      @switch (c.tipo) {
+                        @case ('opciones') {
+                          <fieldset class="grupo" [class.completo]="c.completo">
+                            <legend>{{ c.etiqueta }}</legend>
+                            <div class="opciones">
+                              @for (opcion of c.opciones; track opcion) {
+                                <label
+                                  class="opcion"
+                                  [class.marcada]="valorInfantil(c.clave) === opcion"
+                                >
+                                  <input
+                                    type="radio"
+                                    [formControlName]="c.clave"
+                                    [value]="opcion"
+                                  />
+                                  {{ opcion }}
+                                </label>
+                              }
+                            </div>
+                          </fieldset>
+                        }
+                        @case ('edad') {
+                          <div class="campo">
+                            <label [for]="'infantil-' + c.clave">{{ c.etiqueta }}</label>
+                            <input
+                              [id]="'infantil-' + c.clave"
+                              type="text"
+                              placeholder="—"
+                              [value]="edadInfantil(c.clave)"
+                              (input)="corregirEdad(c.clave, $event)"
+                              [attr.aria-describedby]="'infantil-' + c.clave + '-msg'"
+                            />
+                            <span [id]="'infantil-' + c.clave + '-msg'" class="mensaje">{{
+                              c.ayuda
+                            }}</span>
+                          </div>
+                        }
+                        @default {
+                          <div class="campo" [class.completo]="esInfantilCompleto(c)">
+                            <label [for]="'infantil-' + c.clave">{{ c.etiqueta }}</label>
+                            <input
+                              [id]="'infantil-' + c.clave"
+                              [type]="c.tipo === 'numero' ? 'number' : 'text'"
+                              [attr.min]="c.tipo === 'numero' ? 0 : null"
+                              [formControlName]="c.clave"
+                              [placeholder]="c.placeholder ?? ''"
+                              [attr.aria-describedby]="
+                                c.ayuda ? 'infantil-' + c.clave + '-msg' : null
+                              "
+                            />
+                            @if (c.ayuda) {
+                              <span [id]="'infantil-' + c.clave + '-msg'" class="mensaje">{{
+                                c.ayuda
+                              }}</span>
+                            }
+                          </div>
+                        }
+                      }
+                    }
+                  </ng-container>
+                }
               </div>
             </section>
           }
@@ -695,6 +787,8 @@ export class PaginaFormularioHistoria {
   protected readonly sexos = SEXOS;
   protected readonly fuentes = ['Paciente', 'Familiar', 'Historia', 'Mixta'] as const;
   protected readonly camposRepresentante = CAMPOS_REPRESENTANTE;
+  protected readonly direccion = DIRECCION;
+  protected readonly entidades = ENTIDADES_FEDERALES;
   protected readonly parentescos = PARENTESCOS;
   protected readonly notaValoracion: string;
   protected readonly hoy = hoyIso();
@@ -751,11 +845,20 @@ export class PaginaFormularioHistoria {
       nombre: ['', [Validators.maxLength(100)]],
       apellido: ['', [Validators.maxLength(100)]],
       cedula: [''],
-      fechaNacimiento: ['', [fechaNoFutura]],
+      edad: [null as number | null, [Validators.min(0), Validators.max(120)]],
       estadoCivil: [''],
       gradoInstruccion: [''],
       ocupacion: ['', [Validators.maxLength(150)]],
     }),
+    // v1.6 §8.4: solo Rehabilitación infantil.
+    datosInfantiles: this.fb.group(
+      Object.fromEntries(
+        CLAVES_INFANTILES.map((clave) => [
+          clave,
+          new FormControl<string | number | null>(null, Validators.min(0)),
+        ]),
+      ) as Record<CampoInfantil, FormControl<string | number | null>>,
+    ),
   });
 
   private readonly valores = toSignal(this.formulario.valueChanges, {
@@ -809,7 +912,7 @@ export class PaginaFormularioHistoria {
       nombre: r.nombre?.trim() || null,
       apellido: r.apellido?.trim() || null,
       cedula: r.cedula?.replace(/\D/g, '') || null,
-      fechaNacimiento: r.fechaNacimiento || null,
+      edad: aEntero(r.edad),
       estadoCivil: r.estadoCivil || null,
       gradoInstruccion: r.gradoInstruccion || null,
       ocupacion: r.ocupacion?.trim() || null,
@@ -817,9 +920,22 @@ export class PaginaFormularioHistoria {
     return Object.values(representante).some((valor) => valor !== null) ? representante : null;
   });
 
-  protected readonly edadRepresentante = computed(() =>
-    calcularEdad(this.datosRepresentante()?.fechaNacimiento ?? null, this.ahora),
-  );
+  /** v1.6 §8.4: datos infantiles normalizados; sin ningún dato equivale a no tenerlos. */
+  protected readonly datosInfantiles = computed<DatosInfantiles | null>(() => {
+    if (this.esAdulto) return null;
+    const v = {
+      ...this.formulario.controls.datosInfantiles.getRawValue(),
+      ...this.valores().datosInfantiles,
+    } as Partial<Record<CampoInfantil, string | number | null>>;
+    const datos = Object.fromEntries(
+      CLAVES_INFANTILES.map((clave) => {
+        const valor = v[clave];
+        if (CLAVES_NUMERICAS.has(clave)) return [clave, aEntero(valor)];
+        return [clave, typeof valor === 'string' && valor.trim() ? valor.trim() : null];
+      }),
+    ) as unknown as DatosInfantiles;
+    return Object.values(datos).some((valor) => valor !== null) ? datos : null;
+  });
 
   protected readonly sinDocumento = computed(() => this.datos().sinDocumento);
 
@@ -856,7 +972,7 @@ export class PaginaFormularioHistoria {
   });
   protected readonly edad = computed(() => calcularEdad(this.datos().fechaNacimiento, this.ahora));
   protected readonly faltantes = computed(() =>
-    camposFaltantes(this.tipo, this.datos(), this.datosRepresentante()),
+    camposFaltantes(this.tipo, this.datos(), this.datosRepresentante(), this.datosInfantiles()),
   );
   protected readonly faltantesResumidos = computed(() =>
     resumirFaltantes(this.tipo, this.faltantes(), this.datos().modalidad),
@@ -939,10 +1055,10 @@ export class PaginaFormularioHistoria {
     this.tiposAfectados = enumerar(this.afectadas.map((h) => TIPOS[h.tipo].nombre));
     this.notaValoracion =
       this.historia?.estado === 'ACTIVA'
-        ? 'Esta historia está Activa: su primera valoración ya se completó. Puedes corregir los datos personales cuando lo necesites.'
+        ? 'Esta historia está Activa: su valoración ya se finalizó. Puedes corregir los datos personales cuando lo necesites.'
         : this.esAdulto
-          ? 'La primera valoración se habilita cuando los datos personales estén completos. Al completarla, la historia pasa a Activa.'
-          : 'La primera valoración se habilita cuando los datos personales estén completos y el representante esté registrado.';
+          ? 'La valoración se habilita cuando los datos personales estén completos. Al finalizarla, la historia pasa a Activa.'
+          : 'La valoración se habilita cuando los datos personales (incluidos antecedentes maternos, datos al nacer y exámenes) estén completos y el representante esté registrado.';
 
     this.formulario.controls.sinDocumento.valueChanges.subscribe((marcado) => {
       const { cedula, nacionalidad } = this.formulario.controls;
@@ -971,7 +1087,10 @@ export class PaginaFormularioHistoria {
       nacionalidad: historia.datos.nacionalidad ?? 'V',
       sinDocumento: historia.datos.sinDocumento,
       fuenteInformacion: historia.datos.fuenteInformacion,
-      ...(historia.representante ? { representante: vacio(historia.representante) } : {}),
+      ...(historia.representante
+        ? { representante: { ...vacio(historia.representante), edad: historia.representante.edad } }
+        : {}),
+      ...(historia.datosInfantiles ? { datosInfantiles: historia.datosInfantiles } : {}),
     });
   }
 
@@ -1192,18 +1311,56 @@ export class PaginaFormularioHistoria {
       modalidad: d.modalidad,
       idCentro: d.idCentro,
     };
-    for (const campo of this.secciones().flatMap((s) => s.campos)) {
+    // En infantil la dirección del hogar se pide junto al representante (v1.6).
+    const campos = [
+      ...(this.esAdulto ? [] : DIRECCION),
+      ...this.secciones().flatMap((s) => s.campos),
+    ];
+    for (const campo of campos) {
       if (campo.clave in d && !['nombre', 'apellido'].includes(campo.clave)) {
         const clave = campo.clave as keyof DatosPersonales;
         (cuerpo as Record<string, unknown>)[clave] = d[clave];
       }
     }
-    if (!this.esAdulto) cuerpo.representante = this.datosRepresentante();
+    if (!this.esAdulto) {
+      cuerpo.representante = this.datosRepresentante();
+      cuerpo.datosInfantiles = this.datosInfantiles();
+    }
     return cuerpo;
   }
 
   protected idSeccion(indice: number): string {
     return `seccion-${indice}`;
+  }
+
+  protected controlDireccion(campo: CampoDef): FormControl<string> {
+    return this.formulario.controls[campo.clave as 'dirEstado'];
+  }
+
+  protected valorInfantil(clave: CampoInfantil): string | number | null {
+    return this.datosInfantiles()?.[clave] ?? null;
+  }
+
+  protected esInfantilCompleto(campo: CampoInfantilDef): boolean {
+    return 'completo' in campo && !!campo.completo;
+  }
+
+  /** v1.6 RF-029: la corrección manual, o la edad calculada con la F.N. (y la E.G.). */
+  protected edadInfantil(clave: 'edadCronologica' | 'edadCorregida'): string {
+    const corregida = this.datosInfantiles()?.[clave];
+    if (typeof corregida === 'string' && corregida) return corregida;
+    return edadCalculada(
+      clave,
+      this.datos().fechaNacimiento,
+      this.datosInfantiles()?.edadGestacional ?? null,
+      this.ahora,
+    );
+  }
+
+  /** Lo escrito sustituye a la edad calculada; vacío vuelve a la calculada. */
+  protected corregirEdad(clave: 'edadCronologica' | 'edadCorregida', evento: Event): void {
+    const texto = (evento.target as HTMLInputElement).value;
+    this.formulario.controls.datosInfantiles.controls[clave].setValue(texto);
   }
 
   protected valor(clave: 'sexo'): string {
