@@ -18,7 +18,7 @@ function trauma(cambios: Partial<HistoriaDetalle> = {}): HistoriaDetalle {
     nacionalidad: 'V',
     cedula: '15482301',
     sinDocumento: false,
-    telefono: '0412-555-0134',
+    telefono: '04125550134',
     fechaNacimiento: '1985-03-14',
     fechaCreacion: '2026-09-08T12:00:00.000Z',
     fechaActualizacion: '2026-11-09T12:00:00.000Z',
@@ -36,7 +36,7 @@ function trauma(cambios: Partial<HistoriaDetalle> = {}): HistoriaDetalle {
       nivelEducativo: null,
       estadoCivil: null,
       lugarNacimiento: null,
-      telefono: '0412-555-0134',
+      telefono: '04125550134',
       correo: null,
       dirEstado: null,
       dirMunicipio: null,
@@ -44,7 +44,7 @@ function trauma(cambios: Partial<HistoriaDetalle> = {}): HistoriaDetalle {
       dirComunidad: null,
       contactoNombre: 'Patricia Andrade',
       contactoParentesco: 'Esposa',
-      contactoTelefono: '0414-555-2290',
+      contactoTelefono: '04145552290',
       demandasFisicas: 'Oficina',
       fuenteInformacion: [],
       modalidad: null,
@@ -155,22 +155,22 @@ describe('PaginaFormularioHistoria (edición, B16–B18)', () => {
   it('B16/B17/AC-010: marca lo modificado y pregunta si propagar; "Actualizar ambas" propaga', async () => {
     const pagina = await abrir();
     const navegar = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    rellenar(pagina, { telefono: '0424-555-8890' });
+    rellenar(pagina, { telefono: '04245558890' });
 
     expect(elemento().querySelector('#telefono')?.getAttribute('data-insignia')).toBe('Modificado');
-    expect(elemento().textContent).toContain('Antes: 0412-555-0134');
+    expect(elemento().textContent).toContain('Antes: 04125550134');
 
     await guardar();
     const dialogo = elemento().querySelector('[role="dialog"]')!;
     expect(dialogo.textContent).toContain('¿Actualizar también su otra historia?');
-    expect(dialogo.textContent).toContain('0412-555-0134 → 0424-555-8890');
+    expect(dialogo.textContent).toContain('04125550134 → 04245558890');
     expect(dialogo.textContent).toContain('Neurología del adulto · Borrador');
     http.expectNone('/api/v1/historias/h1');
 
     boton('Actualizar ambas').click();
     const peticion = http.expectOne('/api/v1/historias/h1');
     expect(peticion.request.method).toBe('PATCH');
-    expect(peticion.request.body).toMatchObject({ telefono: '0424-555-8890', propagar: true });
+    expect(peticion.request.body).toMatchObject({ telefono: '04245558890', propagar: true });
     expect(peticion.request.body).not.toHaveProperty('tipo');
     peticion.flush({ historia });
     await harness.fixture.whenStable();
@@ -181,7 +181,7 @@ describe('PaginaFormularioHistoria (edición, B16–B18)', () => {
   it('"Solo esta historia" guarda sin propagar', async () => {
     const pagina = await abrir();
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    rellenar(pagina, { telefono: '0424-555-8890' });
+    rellenar(pagina, { telefono: '04245558890' });
     await guardar();
 
     boton('Solo esta historia').click();
@@ -209,7 +209,7 @@ describe('PaginaFormularioHistoria (edición, B16–B18)', () => {
   it('B18: si la propagación falla ofrece guardar solo en esta', async () => {
     const pagina = await abrir();
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    rellenar(pagina, { telefono: '0424-555-8890' });
+    rellenar(pagina, { telefono: '04245558890' });
     await guardar();
     boton('Actualizar ambas').click();
     http.expectOne('/api/v1/historias/h1').flush(null, { status: 500, statusText: 'Error' });

@@ -14,7 +14,7 @@ const ANTES: DatosPersonales = {
   nivelEducativo: null,
   estadoCivil: null,
   lugarNacimiento: null,
-  telefono: '0412-555-0134',
+  telefono: '04125550134',
   correo: null,
   dirEstado: null,
   dirMunicipio: null,
@@ -34,13 +34,13 @@ describe('cambios compartidos (SPEC §10.2)', () => {
     expect(
       camposCambiados(ANTES, { ...ANTES, demandasFisicas: 'Otra', fuenteInformacion: ['Mixta'] }),
     ).toEqual([]);
-    expect(camposCambiados(ANTES, { ...ANTES, telefono: '0424-555-8890' })).toEqual(['telefono']);
+    expect(camposCambiados(ANTES, { ...ANTES, telefono: '04245558890' })).toEqual(['telefono']);
   });
 
   it('B17: describe cada cambio como "antes → después" y une el documento', () => {
     const despues = {
       ...ANTES,
-      telefono: '0424-555-8890',
+      telefono: '04245558890',
       nacionalidad: 'E' as const,
       cedula: '81234567',
       sexo: null,
@@ -51,7 +51,7 @@ describe('cambios compartidos (SPEC §10.2)', () => {
       { etiqueta: 'Documento', antes: 'V-15.482.301', despues: 'E-81.234.567' },
       { etiqueta: 'Fecha de nacimiento', antes: '14/03/1985', despues: '15/03/1985' },
       { etiqueta: 'Sexo', antes: 'Masculino', despues: '—' },
-      { etiqueta: 'Teléfono', antes: '0412-555-0134', despues: '0424-555-8890' },
+      { etiqueta: 'Teléfono', antes: '04125550134', despues: '04245558890' },
     ]);
   });
 });

@@ -64,7 +64,8 @@ interface Propuesta {
   plan: PlanAutocompletado;
 }
 
-const TELEFONO = /^[\d\s+()-]*$/;
+// Celular o teléfono: solo dígitos, máximo 11 (p. ej. 04125550000).
+const TELEFONO = /^\d*$/;
 
 // Mensajes de B12 (los mismos que devuelve el backend, §9.2).
 const MENSAJES: Record<CampoIdentificacion, string> = {
@@ -292,6 +293,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                           [placeholder]="campo.placeholder ?? ''"
                           [attr.max]="campo.tipo === 'fecha' ? hoy : null"
                           [attr.inputmode]="campo.clave === 'cedula' ? 'numeric' : null"
+                          [attr.maxlength]="campo.clave === 'cedula' ? 9 : null"
                           [attr.aria-invalid]="
                             campo.clave === 'cedula' && muestraError('representante.cedula')
                           "
@@ -364,9 +366,6 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                               [class.invalido]="muestraError('documento')"
                               [attr.data-insignia]="insignia('documento') || null"
                             >
-                              <option value="">
-                                {{ esAdulto ? 'Nacionalidad' : 'Pendiente' }}
-                              </option>
                               <option value="V">V</option>
                               <option value="E">E</option>
                             </select>
@@ -375,7 +374,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                               id="cedula"
                               formControlName="cedula"
                               inputmode="numeric"
-                              maxlength="11"
+                              maxlength="9"
                               placeholder="Número de cédula"
                               [attr.aria-invalid]="muestraError('documento')"
                               aria-describedby="documento-msg"
@@ -543,6 +542,8 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                             [attr.data-insignia]="insignia(campo.clave) || null"
                             [placeholder]="placeholder(campo)"
                             [attr.max]="campo.tipo === 'fecha' ? hoy : null"
+                            [attr.maxlength]="campo.tipo === 'tel' ? 11 : null"
+                            [attr.inputmode]="campo.tipo === 'tel' ? 'numeric' : null"
                             [attr.aria-invalid]="
                               muestraError(campo.clave) || controlInvalido(campo.clave)
                             "
@@ -722,7 +723,7 @@ export class PaginaFormularioHistoria {
   protected readonly formulario = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.maxLength(100)]],
     apellido: ['', [Validators.required, Validators.maxLength(100)]],
-    nacionalidad: ['' as '' | 'V' | 'E'],
+    nacionalidad: ['V' as 'V' | 'E'],
     cedula: [''],
     sinDocumento: [false],
     fechaNacimiento: ['', [fechaNoFutura]],
@@ -732,7 +733,7 @@ export class PaginaFormularioHistoria {
     nivelEducativo: [''],
     estadoCivil: [''],
     lugarNacimiento: ['', [Validators.maxLength(150)]],
-    telefono: ['', [Validators.pattern(TELEFONO), Validators.maxLength(30)]],
+    telefono: ['', [Validators.pattern(TELEFONO), Validators.maxLength(11)]],
     correo: ['', [Validators.email]],
     dirEstado: [''],
     dirMunicipio: [''],
@@ -740,7 +741,7 @@ export class PaginaFormularioHistoria {
     dirComunidad: [''],
     contactoNombre: [''],
     contactoParentesco: [''],
-    contactoTelefono: ['', [Validators.pattern(TELEFONO), Validators.maxLength(30)]],
+    contactoTelefono: ['', [Validators.pattern(TELEFONO), Validators.maxLength(11)]],
     demandasFisicas: ['', [Validators.maxLength(1000)]],
     fuenteInformacion: [[] as string[]],
     modalidad: ['' as '' | ModalidadAtencion],
@@ -769,7 +770,8 @@ export class PaginaFormularioHistoria {
     return {
       nombre: v.nombre.trim(),
       apellido: v.apellido.trim(),
-      nacionalidad: sinDocumento ? null : v.nacionalidad || null,
+      // La nacionalidad solo se guarda junto a una cédula (en infantil puede quedar pendiente).
+      nacionalidad: sinDocumento || !v.cedula?.trim() ? null : v.nacionalidad || null,
       cedula: sinDocumento ? null : v.cedula.replace(/\D/g, '') || null,
       sinDocumento,
       fechaNacimiento: v.fechaNacimiento || null,
@@ -946,7 +948,7 @@ export class PaginaFormularioHistoria {
       const { cedula, nacionalidad } = this.formulario.controls;
       if (marcado) {
         cedula.setValue('');
-        nacionalidad.setValue('');
+        nacionalidad.setValue('V');
         cedula.disable({ emitEvent: false });
         nacionalidad.disable({ emitEvent: false });
       } else {
@@ -966,6 +968,7 @@ export class PaginaFormularioHistoria {
       );
     this.formulario.patchValue({
       ...vacio(historia.datos),
+      nacionalidad: historia.datos.nacionalidad ?? 'V',
       sinDocumento: historia.datos.sinDocumento,
       fuenteInformacion: historia.datos.fuenteInformacion,
       ...(historia.representante ? { representante: vacio(historia.representante) } : {}),
@@ -1061,6 +1064,7 @@ export class PaginaFormularioHistoria {
     const valores = Object.fromEntries(
       Object.entries(propuesta.plan.valores).map(([clave, valor]) => [clave, valor ?? '']),
     );
+    if (valores['nacionalidad'] === '') valores['nacionalidad'] = 'V';
     this.formulario.patchValue(valores);
     const claves = new Set(Object.keys(valores));
     if (claves.has('cedula') || claves.has('sinDocumento')) claves.add('documento');
@@ -1268,7 +1272,7 @@ export class PaginaFormularioHistoria {
     if (this.controlInvalido(campo.clave)) {
       if (campo.tipo === 'fecha') return 'La fecha de nacimiento no puede ser futura.';
       if (campo.tipo === 'email') return 'El correo no tiene un formato válido.';
-      if (campo.tipo === 'tel') return 'El teléfono solo admite dígitos, espacios y + ( ) -.';
+      if (campo.tipo === 'tel') return 'El teléfono solo admite dígitos, máximo 11.';
     }
     if (this.insignia(campo.clave) === 'Modificado' && campo.tipo !== 'seleccion') {
       const antes = this.historia?.datos[campo.clave as keyof DatosPersonales];

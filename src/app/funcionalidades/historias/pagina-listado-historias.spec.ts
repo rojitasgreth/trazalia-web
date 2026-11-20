@@ -17,7 +17,7 @@ const CARLOS: HistoriaResumen = {
   nacionalidad: 'V',
   cedula: '15482301',
   sinDocumento: false,
-  telefono: '0412-555-0134',
+  telefono: '04125550134',
   fechaNacimiento: '1985-03-14',
   fechaCreacion: '2026-09-08T12:00:00.000Z',
   fechaActualizacion: '2026-11-09T12:00:00.000Z',
@@ -84,7 +84,7 @@ describe('PaginaListadoHistorias', () => {
     expect(texto()).toContain('V-15.482.301');
     expect(texto()).toContain('Traumatología del adulto');
     expect(texto()).toContain('Activa');
-    expect(texto()).toContain('0412-555-0134');
+    expect(texto()).toContain('04125550134');
     expect(texto()).toContain('14/03/1985');
     expect(texto()).toContain('Mostrando 1–1 de 1 historias');
     const enlace = harness.routeNativeElement?.querySelector('a.nombre');

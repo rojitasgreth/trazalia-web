@@ -82,7 +82,7 @@ export interface SeccionDef {
   nota?: string;
 }
 
-const TELEFONO_PH = '0412-555-0000';
+const TELEFONO_PH = '04125550000';
 
 function identificacion(tipo: TipoHistoria): CampoDef[] {
   const campos: CampoDef[] = [
@@ -306,7 +306,7 @@ export const CAMPOS_REPRESENTANTE: readonly CampoRepresentanteDef[] = [
   { clave: 'parentesco', etiqueta: 'Parentesco', tipo: 'parentesco' },
   { clave: 'nombre', etiqueta: 'Nombre', tipo: 'texto' },
   { clave: 'apellido', etiqueta: 'Apellido', tipo: 'texto' },
-  { clave: 'cedula', etiqueta: 'Cédula', tipo: 'texto', placeholder: 'V-00000000' },
+  { clave: 'cedula', etiqueta: 'Cédula', tipo: 'texto', placeholder: 'Número de cédula' },
   { clave: 'fechaNacimiento', etiqueta: 'Fecha de nacimiento', tipo: 'fecha' },
   { clave: 'estadoCivil', etiqueta: 'Estado civil', tipo: 'seleccion', opciones: ESTADOS_CIVILES },
   {
