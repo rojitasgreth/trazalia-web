@@ -1,10 +1,19 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  Injector,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { concat, defer, EMPTY, Observable, of, type Subscription } from 'rxjs';
-import { last, map, switchMap } from 'rxjs/operators';
+import { concat, defer, EMPTY, Observable, of, throwError, type Subscription } from 'rxjs';
+import { last, map, switchMap, take } from 'rxjs/operators';
 import { ValoracionesApi } from '../../core/valoraciones/valoraciones-api';
 import type {
+  ErrorCampo,
   ErrorValoracion,
   RespuestaValoracion,
 } from '../../core/valoraciones/valoraciones.model';
@@ -14,11 +23,19 @@ import {
   calcularImc,
   construirGrupo,
   contenidoDe,
+  erroresDeFormato,
   estructuraDe,
+  idCampo,
+  ubicarCampo,
   type EstructuraFicha,
   type GrupoFicha,
 } from './ficha-formulario';
 import { SeccionFicha, type Automaticos } from './seccion-ficha';
+
+/** Interrumpe el guardado (y lo que venga después) sin llamar a la API. */
+class ContenidoInvalido {
+  constructor(readonly errores: ErrorCampo[]) {}
+}
 
 function dosDigitos(n: number): string {
   return String(n).padStart(2, '0');
@@ -51,6 +68,7 @@ export class PaginaValoracion {
   private readonly api = inject(ValoracionesApi);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
   protected readonly idHistoria = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
 
   protected readonly respuesta = signal<RespuestaValoracion | null>(null);
@@ -59,6 +77,7 @@ export class PaginaValoracion {
   protected readonly guardando = signal(false);
   protected readonly guardadoA = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
+  protected readonly erroresCampo = signal<Record<string, string>>({});
   /** SPEC C §13: la valoración se guardó en otra pestaña. */
   protected readonly conflicto = signal(false);
   protected readonly confirmarFinalizar = signal(false);
@@ -116,6 +135,8 @@ export class PaginaValoracion {
     if (!r.valoracion || !reconstruir) return;
     this.suscripciones.forEach((s) => s.unsubscribe());
     this.suscripciones = [];
+    this.erroresCampo.set({});
+    this.error.set(null);
     this.estructura = estructuraDe(r.ficha);
     this.grupo = construirGrupo(this.estructura, r.valoracion.contenido);
     if (this.lectura()) {
@@ -184,6 +205,8 @@ export class PaginaValoracion {
       const r = this.respuesta();
       const grupo = this.grupo;
       if (!r?.valoracion || !grupo || this.lectura() || !grupo.dirty) return r ? of(r) : EMPTY;
+      const invalidos = erroresDeFormato(this.estructura!, grupo);
+      if (invalidos.length > 0) return throwError(() => new ContenidoInvalido(invalidos));
       this.guardando.set(true);
       this.error.set(null);
       return this.api.guardar(this.idHistoria, contenidoDe(grupo), r.valoracion.version).pipe(
@@ -204,6 +227,10 @@ export class PaginaValoracion {
       complete: alTerminar,
       error: (error: unknown) => {
         this.guardando.set(false);
+        if (error instanceof ContenidoInvalido) {
+          this.senalarCampos(error.errores);
+          return;
+        }
         const cuerpo =
           error instanceof HttpErrorResponse ? (error.error as ErrorValoracion | null) : null;
         if (
@@ -214,9 +241,49 @@ export class PaginaValoracion {
           this.conflicto.set(true);
           return;
         }
+        if (cuerpo?.errores?.length) {
+          this.senalarCampos(cuerpo.errores);
+          return;
+        }
         this.error.set(cuerpo?.mensaje ?? 'No se pudo guardar la valoración. Inténtalo de nuevo.');
       },
     });
+  }
+
+  /** Lleva al primer campo que impidió guardar; lo escrito sigue en el formulario. */
+  private senalarCampos(errores: ErrorCampo[]): void {
+    const ficha = this.ficha();
+    const grupo = this.grupo;
+    if (!ficha || !grupo) return;
+    const [primero] = errores;
+    const lugar = ubicarCampo(ficha, primero!.clave);
+    const mas = errores.length - 1;
+    this.error.set(
+      `No se guardó. Revisa «${lugar?.etiqueta ?? primero!.clave}»` +
+        `${lugar ? ` en ${lugar.seccion}` : ''}: ${primero!.mensaje}` +
+        (mas > 0 ? ` Hay ${mas} campo${mas > 1 ? 's' : ''} más por corregir.` : ''),
+    );
+    const anteriores = this.erroresCampo();
+    this.erroresCampo.set(Object.fromEntries(errores.map((e) => [e.clave, e.mensaje])));
+    for (const { clave } of errores) {
+      if (clave in anteriores) continue;
+      const suscripcion = grupo.controls[clave]?.valueChanges
+        .pipe(take(1))
+        .subscribe(() => this.limpiarError(clave));
+      if (suscripcion) this.suscripciones.push(suscripcion);
+    }
+    if (lugar) this.activa.set(lugar.indice);
+    afterNextRender(
+      { read: () => document.getElementById(idCampo(primero!.clave))?.focus() },
+      { injector: this.injector },
+    );
+  }
+
+  private limpiarError(clave: string): void {
+    const restantes = { ...this.erroresCampo() };
+    delete restantes[clave];
+    this.erroresCampo.set(restantes);
+    if (Object.keys(restantes).length === 0) this.error.set(null);
   }
 
   /** SPEC C §7: una pestaña por sección; lo escrito se guarda al cambiar de pestaña. */

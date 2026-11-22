@@ -159,13 +159,25 @@
                                         ? 'time'
                                         : 'text'
                                   "
+                                  [attr.max]="p.tipo === 'fecha' ? '9999-12-31' : null"
                                   [style.width.px]="p.ancho ?? 96"
                                   [formControl]="control(campo.id + '.' + p.id)"
+                                  [attr.aria-invalid]="
+                                    errorDe(campo.id + '.' + p.id) ? 'true' : null
+                                  "
+                                  [attr.aria-describedby]="descripcion(campo.id + '.' + p.id)"
                                 />
                                 @if (p.unidad) {
                                   <span class="unidad">{{ p.unidad }}</span>
                                 }
                               </span>
+                              @if (errorDe(campo.id + '.' + p.id); as motivo) {
+                                <span
+                                  class="error-campo"
+                                  [id]="idDe(campo.id + '.' + p.id) + '-error'"
+                                  >{{ motivo }}</span
+                                >
+                              }
                             </div>
                           }
                         </div>
@@ -180,12 +192,18 @@
                           [attr.inputmode]="
                             campo.k === 'numero' || campo.k === 'imc' ? 'decimal' : null
                           "
+                          [attr.max]="campo.k === 'fecha' ? '9999-12-31' : null"
                           [class.calculado]="campo.k === 'imc'"
-                          [placeholder]="campo.k === 'texto' ? (campo.placeholder ?? '') : ''"
-                          [formControl]="control(campo.id)"
-                          [attr.aria-describedby]="
-                            campo.k === 'imc' ? idDe(campo.id) + '-ayuda' : null
+                          [placeholder]="
+                            campo.k === 'texto'
+                              ? (campo.placeholder ?? '')
+                              : campo.k === 'numero'
+                                ? 'Solo el número'
+                                : ''
                           "
+                          [formControl]="control(campo.id)"
+                          [attr.aria-invalid]="errorDe(campo.id) ? 'true' : null"
+                          [attr.aria-describedby]="descripcion(campo.id, campo.k === 'imc')"
                         />
                         @if (campo.k === 'numero') {
                           <span class="unidad">{{ campo.unidad }}</span>
@@ -203,6 +221,11 @@
                       @if (campo.k === 'imc') {
                         <span class="ayuda" [id]="idDe(campo.id) + '-ayuda'">{{
                           campo.ayuda
+                        }}</span>
+                      }
+                      @if (errorDe(campo.id); as motivo) {
+                        <span class="error-campo" [id]="idDe(campo.id) + '-error'">{{
+                          motivo
                         }}</span>
                       }
                     }
@@ -281,12 +304,22 @@
                               <input
                                 type="text"
                                 class="mini-entrada"
+                                [id]="idDe(celda.id + '.' + p.id)"
                                 [class.calculado]="p.id === 'imc'"
                                 [attr.aria-label]="
                                   etiquetaCelda(bloque, fila, c) + ' · ' + (p.etiqueta || 'valor')
                                 "
                                 [formControl]="control(celda.id + '.' + p.id)"
+                                [attr.aria-invalid]="errorDe(celda.id + '.' + p.id) ? 'true' : null"
+                                [attr.aria-describedby]="descripcion(celda.id + '.' + p.id)"
                               />
+                              @if (errorDe(celda.id + '.' + p.id); as motivo) {
+                                <span
+                                  class="error-campo"
+                                  [id]="idDe(celda.id + '.' + p.id) + '-error'"
+                                  >{{ motivo }}</span
+                                >
+                              }
                             }
                             {{ p.unidad ?? '' }}
                             @if (p.id === 'imc' && !lectura()) {
@@ -314,16 +347,25 @@
                         <span class="con-unidad">
                           <input
                             [type]="celda.tipo === 'fecha' ? 'date' : 'text'"
+                            [id]="idDe(celda.id)"
+                            [attr.max]="celda.tipo === 'fecha' ? '9999-12-31' : null"
                             class="entrada-celda"
                             [attr.aria-label]="etiquetaCelda(bloque, fila, c)"
                             [placeholder]="celda.placeholder ?? ''"
                             [formControl]="control(celda.id)"
                             [class.inactiva]="deshabilitada(celda)"
+                            [attr.aria-invalid]="errorDe(celda.id) ? 'true' : null"
+                            [attr.aria-describedby]="descripcion(celda.id)"
                           />
                           @if (celda.unidad) {
                             <span class="unidad">{{ celda.unidad }}</span>
                           }
                         </span>
+                        @if (errorDe(celda.id); as motivo) {
+                          <span class="error-campo" [id]="idDe(celda.id) + '-error'">{{
+                            motivo
+                          }}</span>
+                        }
                       }
                     }
                   }

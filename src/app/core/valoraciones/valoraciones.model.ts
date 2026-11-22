@@ -138,8 +138,14 @@ export interface RespuestaValoracion {
   datos: Record<FuenteDato, string>;
 }
 
-/** Cuerpo de un 409: `version` (otra pestaña) o `finalizada`. */
+export interface ErrorCampo {
+  clave: string;
+  mensaje: string;
+}
+
+/** Cuerpo de un 409 (`version` u `finalizada`) o de un 400 con los campos inválidos. */
 export interface ErrorValoracion {
   mensaje: string;
   motivo?: 'version' | 'finalizada';
+  errores?: ErrorCampo[];
 }

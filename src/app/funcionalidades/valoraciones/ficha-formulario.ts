@@ -1,5 +1,10 @@
 import { FormControl, FormGroup } from '@angular/forms';
-import type { Contenido, Ficha, ValorContenido } from '../../core/valoraciones/valoraciones.model';
+import type {
+  Contenido,
+  ErrorCampo,
+  Ficha,
+  ValorContenido,
+} from '../../core/valoraciones/valoraciones.model';
 
 // Formulario reactivo (Documento Cero §6) construido a partir de la definición
 // de la ficha que envía la API: un control por clave del contenido.
@@ -12,12 +17,15 @@ export interface EstructuraFicha {
   dependencias: Map<string, string>;
   /** RF-C08: IMC → [peso, talla]. */
   imc: Map<string, [string, string]>;
+  /** Claves que solo admiten un número; la unidad ya aparece junto al campo. */
+  numericos: Set<string>;
 }
 
 export function estructuraDe(ficha: Ficha): EstructuraFicha {
   const controles = new Map<string, TipoControl>();
   const dependencias = new Map<string, string>();
   const imc = new Map<string, [string, string]>();
+  const numericos = new Set<string>();
   for (const seccion of ficha.secciones) {
     for (const bloque of seccion.bloques) {
       if (bloque.k === 'campos') {
@@ -31,6 +39,7 @@ export function estructuraDe(ficha: Ficha): EstructuraFicha {
           } else {
             controles.set(c.id, 'texto');
             if (c.k === 'imc') imc.set(c.id, [c.peso, c.talla]);
+            if (c.k === 'imc' || c.k === 'numero') numericos.add(c.id);
           }
         }
       }
@@ -49,13 +58,60 @@ export function estructuraDe(ficha: Ficha): EstructuraFicha {
             // Traumatología §5: Peso/talla/IMC en una celda de tres partes.
             if (celda.partes.some((p) => p.id === 'imc')) {
               imc.set(`${celda.id}.imc`, [`${celda.id}.p1`, `${celda.id}.p2`]);
+              numericos.add(`${celda.id}.imc`);
             }
           }
         }
       }
     }
   }
-  return { controles, dependencias, imc };
+  return { controles, dependencias, imc, numericos };
+}
+
+/** Id del elemento de una clave del contenido ("s3.dolor" → "campo-s3-dolor"). */
+export function idCampo(clave: string): string {
+  return `campo-${clave.replace(/[^\w-]/g, '-')}`;
+}
+
+const NUMERO = /^-?(\d+([.,]\d+)?|[.,]\d+)$/;
+
+/** Los números mal escritos se señalan sin ir al servidor; este sigue validando todo. */
+export function erroresDeFormato(estructura: EstructuraFicha, grupo: GrupoFicha): ErrorCampo[] {
+  const errores: ErrorCampo[] = [];
+  for (const clave of estructura.numericos) {
+    const valor = grupo.controls[clave]?.value;
+    if (typeof valor === 'string' && valor.trim() && !NUMERO.test(valor.trim())) {
+      errores.push({ clave, mensaje: 'Escribe solo el número, sin unidades.' });
+    }
+  }
+  return errores;
+}
+
+/** Pestaña y nombre visible de una clave, para decir qué campo hay que corregir. */
+export function ubicarCampo(
+  ficha: Ficha,
+  clave: string,
+): { indice: number; seccion: string; etiqueta: string } | null {
+  const contiene = (id: string) => clave === id || clave.startsWith(`${id}.`);
+  for (const [indice, seccion] of ficha.secciones.entries()) {
+    const lugar = (etiqueta: string) => ({ indice, seccion: seccion.corto, etiqueta });
+    for (const bloque of seccion.bloques) {
+      if (bloque.k === 'campos') {
+        const campo = bloque.campos.find((c) => contiene(c.id));
+        if (!campo) continue;
+        const parte =
+          campo.k === 'grupo' ? campo.partes.find((p) => clave === `${campo.id}.${p.id}`) : null;
+        return lugar(parte ? `${campo.etiqueta} · ${parte.etiqueta}` : campo.etiqueta);
+      }
+      if (bloque.k === 'tabla') {
+        const fila = bloque.filas.find((f) => f.some((c) => 'id' in c && contiene(c.id)));
+        if (!fila) continue;
+        const fijo = fila.find((c) => c.k === 'fijo');
+        return lugar(fijo?.k === 'fijo' ? `${bloque.titulo} · ${fijo.texto}` : bloque.titulo);
+      }
+    }
+  }
+  return null;
 }
 
 export type GrupoFicha = FormGroup<Record<string, FormControl<ValorContenido>>>;

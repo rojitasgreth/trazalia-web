@@ -3,8 +3,10 @@ import {
   calcularImc,
   construirGrupo,
   contenidoDe,
+  erroresDeFormato,
   estructuraDe,
   textoDe,
+  ubicarCampo,
 } from './ficha-formulario';
 import fichaAdultoMayor from './pruebas/ficha-adulto-mayor.json';
 import fichaNeuro from './pruebas/ficha-neuro.json';
@@ -68,6 +70,30 @@ describe('ficha-formulario (SPEC C §7–§8)', () => {
     expect(calcularImc('78,5', '176')).toBe('25,3');
     expect(calcularImc('', '176')).toBe('');
     expect(calcularImc('abc', '176')).toBe('');
+  });
+
+  it('señala los números con unidades y acepta los decimales', () => {
+    const estructura = estructuraDe(neuro);
+    const grupo = construirGrupo(estructura, {
+      's13.barthel': '85/100',
+      's13.lawton_brody': '6',
+      's11.10mwt': ',8',
+    });
+    expect(erroresDeFormato(estructura, grupo)).toEqual([
+      { clave: 's13.barthel', mensaje: 'Escribe solo el número, sin unidades.' },
+    ]);
+  });
+
+  it('ubica un campo por su pestaña y su nombre visible', () => {
+    expect(ubicarCampo(neuro, 's13.barthel')).toEqual({
+      indice: 12,
+      seccion: neuro.secciones[12]!.corto,
+      etiqueta: 'Barthel',
+    });
+    expect(ubicarCampo(trauma, 's5.signos_vitales_y_antropometria.f6.c2.imc')?.etiqueta).toContain(
+      'Peso/talla/IMC',
+    );
+    expect(ubicarCampo(neuro, 's99.no_existe')).toBeNull();
   });
 
   it('SPEC C §11: en lectura los vacíos son una raya y las fechas van en dd/mm/aaaa', () => {

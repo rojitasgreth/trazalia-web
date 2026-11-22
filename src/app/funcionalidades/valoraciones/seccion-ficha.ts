@@ -8,7 +8,7 @@ import type {
   Seccion,
   ValorContenido,
 } from '../../core/valoraciones/valoraciones.model';
-import { textoDe, type GrupoFicha } from './ficha-formulario';
+import { idCampo, textoDe, type GrupoFicha } from './ficha-formulario';
 
 export interface Automaticos {
   fisioterapeuta: string;
@@ -50,6 +50,8 @@ export class SeccionFicha {
   readonly imprimir = input(false);
   readonly datos = input.required<Record<FuenteDato, string>>();
   readonly automaticos = input.required<Automaticos>();
+  /** Clave → motivo de los campos que no se pudieron guardar. */
+  readonly errores = input<Record<string, string>>({});
   readonly recalcular = output<string>();
 
   protected readonly coloresDolor = COLORES_DOLOR;
@@ -66,9 +68,21 @@ export class SeccionFicha {
     return textoDe(this.valor(clave));
   }
 
-  /** Id de un elemento a partir de una clave del contenido ("s3.dolor" → "campo-s3-dolor"). */
   protected idDe(clave: string): string {
-    return `campo-${clave.replace(/[^\w-]/g, '-')}`;
+    return idCampo(clave);
+  }
+
+  protected errorDe(clave: string): string | null {
+    return this.errores()[clave] ?? null;
+  }
+
+  /** `aria-describedby` del control: su ayuda (si la tiene) y su error. */
+  protected descripcion(clave: string, conAyuda = false): string | null {
+    const ids = [
+      ...(conAyuda ? [`${this.idDe(clave)}-ayuda`] : []),
+      ...(this.errorDe(clave) ? [`${this.idDe(clave)}-error`] : []),
+    ];
+    return ids.length ? ids.join(' ') : null;
   }
 
   protected dato(fuente: FuenteDato): string {

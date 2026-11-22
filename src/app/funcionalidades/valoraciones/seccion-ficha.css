@@ -85,6 +85,15 @@ textarea {
   line-height: 1.4;
   color: var(--color-texto-secundario);
 }
+.error-campo {
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-peligro);
+}
+input[aria-invalid='true'] {
+  border-color: var(--color-borde-error);
+}
 .opciones {
   display: flex;
   flex-wrap: wrap;

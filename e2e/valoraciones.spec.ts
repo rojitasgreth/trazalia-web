@@ -72,6 +72,53 @@ async function iniciarSesion(page: Page) {
   );
 }
 
+test('Neurología: un número con unidades señala el campo y no se guarda hasta corregirlo', async ({
+  page,
+}) => {
+  await iniciarSesion(page);
+  const fichaNeuro = JSON.parse(
+    readFileSync(
+      join(__dirname, '../src/app/funcionalidades/valoraciones/pruebas/ficha-neuro.json'),
+      'utf8',
+    ),
+  ) as { secciones: unknown[] };
+  const base = respuesta({ ...EN_CURSO, contenido: {} });
+  const neuro = {
+    ...base,
+    historia: { ...base.historia, tipo: 'NEURO_ADULTO' },
+    ficha: fichaNeuro,
+  };
+  const guardados: { contenido: object }[] = [];
+  await page.route(RUTA, (r) => {
+    if (r.request().method() !== 'PUT') return r.fulfill({ json: neuro });
+    const cuerpo = r.request().postDataJSON() as { contenido: object; version: number };
+    guardados.push(cuerpo);
+    return r.fulfill({
+      json: {
+        ...neuro,
+        valoracion: { ...EN_CURSO, version: cuerpo.version + 1, contenido: cuerpo.contenido },
+      },
+    });
+  });
+
+  await page.goto(`/historias/${ID}/valoracion`);
+  await page.getByRole('tab', { name: /13\. Autonomía/ }).click();
+  const barthel = page.getByLabel('Barthel', { exact: true });
+  await barthel.fill('85/100');
+  await page.getByRole('tab', { name: /14\./ }).click();
+
+  await expect(page.getByRole('alert')).toContainText('Revisa «Barthel»');
+  await expect(barthel).toHaveAttribute('aria-invalid', 'true');
+  await expect(barthel).toBeFocused();
+  expect(guardados).toHaveLength(0);
+
+  await barthel.fill('85');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.getByRole('tab', { name: /14\./ }).click();
+  await expect(page.getByText('Borrador de la valoración guardado hoy')).toBeVisible();
+  expect(guardados[0]!.contenido).toEqual({ 's13.barthel': '85' });
+});
+
 test('SPEC C: inicia desde el detalle, guarda al cambiar de pestaña y finaliza', async ({
   page,
 }) => {
