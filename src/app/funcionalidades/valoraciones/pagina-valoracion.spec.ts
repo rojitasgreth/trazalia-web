@@ -165,6 +165,39 @@ describe('PaginaValoracion', () => {
     http.expectOne(RUTA).flush(respuesta({ version: 3 }));
   });
 
+  it('cada fila de opciones es independiente: marcar una no marca las demás', async () => {
+    const elemento = await abrir(respuesta({}, fichaNeuro));
+    (elemento.querySelector('#pestana-2') as HTMLButtonElement).click();
+    await estable();
+    const filas = Array.from(elemento.querySelectorAll('[role="radiogroup"]')).map((g) =>
+      Array.from(g.querySelectorAll<HTMLInputElement>('input[type="radio"]')),
+    );
+    expect(filas).toHaveLength(8);
+
+    filas[0]![0]!.click();
+    await estable();
+    expect(filas.map((f) => f.map((r) => r.checked))).toEqual([
+      [true, false],
+      ...Array.from({ length: 7 }, () => [false, false]),
+    ]);
+
+    filas[1]![1]!.click();
+    await estable();
+    expect(filas[0]!.map((r) => r.checked)).toEqual([true, false]);
+    expect(filas[1]!.map((r) => r.checked)).toEqual([false, true]);
+    expect(filas[2]!.map((r) => r.checked)).toEqual([false, false]);
+
+    (elemento.querySelector('#pestana-3') as HTMLButtonElement).click();
+    const peticion = http.expectOne((r) => r.method === 'PUT');
+    expect(peticion.request.body.contenido).toEqual({
+      's3.cribado_de_seguridad.f1.c2': 'Sí',
+      's3.cribado_de_seguridad.f2.c2': 'No',
+    });
+    peticion.flush(
+      respuesta({ version: 2, contenido: peticion.request.body.contenido }, fichaNeuro),
+    );
+  });
+
   it('un número con unidades no se envía: señala el campo y conserva lo escrito', async () => {
     const elemento = await abrir(respuesta({}, fichaNeuro));
     (elemento.querySelector('#pestana-12') as HTMLButtonElement).click();

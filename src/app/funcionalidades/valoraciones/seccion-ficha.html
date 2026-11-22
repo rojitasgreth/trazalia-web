@@ -109,9 +109,13 @@
                         <div class="opciones">
                           @for (o of campo.opciones; track o) {
                             <label class="opcion" [class.marcada]="valor(campo.id) === o">
-                              <input type="radio" [formControl]="control(campo.id)" [value]="o" />{{
-                                o
-                              }}
+                              <input
+                                type="radio"
+                                [name]="campo.id"
+                                [attr.name]="campo.id"
+                                [formControl]="control(campo.id)"
+                                [value]="o"
+                              />{{ o }}
                             </label>
                           }
                         </div>
@@ -285,9 +289,13 @@
                         >
                           @for (o of celda.opciones; track o) {
                             <label class="opcion mini" [class.marcada]="valor(celda.id) === o">
-                              <input type="radio" [formControl]="control(celda.id)" [value]="o" />{{
-                                o
-                              }}
+                              <input
+                                type="radio"
+                                [name]="celda.id"
+                                [attr.name]="celda.id"
+                                [formControl]="control(celda.id)"
+                                [value]="o"
+                              />{{ o }}
                             </label>
                           }
                         </div>

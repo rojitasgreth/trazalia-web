@@ -119,6 +119,37 @@ test('Neurología: un número con unidades señala el campo y no se guarda hasta
   expect(guardados[0]!.contenido).toEqual({ 's13.barthel': '85' });
 });
 
+test('Neurología: en el cribado cada fila conserva su propia opción', async ({ page }) => {
+  await iniciarSesion(page);
+  const fichaNeuro = JSON.parse(
+    readFileSync(
+      join(__dirname, '../src/app/funcionalidades/valoraciones/pruebas/ficha-neuro.json'),
+      'utf8',
+    ),
+  ) as { secciones: unknown[] };
+  const base = respuesta({ ...EN_CURSO, contenido: {} });
+  const neuro = {
+    ...base,
+    historia: { ...base.historia, tipo: 'NEURO_ADULTO' },
+    ficha: fichaNeuro,
+  };
+  await page.route(RUTA, (r) => r.fulfill({ json: neuro }));
+
+  await page.goto(`/historias/${ID}/valoracion`);
+  await page.getByRole('tab', { name: /3\. Cribado/ }).click();
+  const filas = page.getByRole('radiogroup');
+  await expect(filas).toHaveCount(8);
+
+  await filas.nth(0).getByRole('radio', { name: 'Sí' }).check();
+  await filas.nth(1).getByRole('radio', { name: 'No' }).check();
+
+  await expect(filas.nth(0).getByRole('radio', { name: 'Sí' })).toBeChecked();
+  await expect(filas.nth(1).getByRole('radio', { name: 'No' })).toBeChecked();
+  await expect(filas.nth(1).getByRole('radio', { name: 'Sí' })).not.toBeChecked();
+  await expect(filas.nth(2).getByRole('radio', { name: 'Sí' })).not.toBeChecked();
+  await expect(filas.nth(2).getByRole('radio', { name: 'No' })).not.toBeChecked();
+});
+
 test('SPEC C: inicia desde el detalle, guarda al cambiar de pestaña y finaliza', async ({
   page,
 }) => {
