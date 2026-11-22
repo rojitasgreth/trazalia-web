@@ -7,8 +7,7 @@
   border-radius: var(--radio-panel);
   background: var(--color-superficie);
 }
-.cabecera,
-.lector-cabecera {
+.cabecera {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -19,12 +18,7 @@ h2 {
   margin: 0;
   font-size: 18px;
 }
-h3 {
-  margin: 0;
-  font-size: var(--texto-l);
-}
-.resumen,
-.posicion {
+.resumen {
   color: var(--color-texto-secundario);
   font-size: var(--texto-xs);
 }
@@ -91,24 +85,26 @@ h3 {
   border-radius: var(--radio-tarjeta);
   background: var(--color-superficie);
   color: var(--color-texto);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
+  text-decoration: none;
   transition:
     border-color 0.15s ease,
     background 0.15s ease;
 }
-.tarjeta:hover:not(:disabled) {
-  border-color: var(--color-primario);
-}
-.tarjeta:disabled {
-  background: var(--color-fondo);
-  cursor: default;
-}
-.tarjeta[aria-pressed='true'] {
+a.tarjeta:hover {
   border-color: var(--color-primario);
   background: var(--color-primario-suave);
-  box-shadow: inset 0 0 0 1px var(--color-primario);
+}
+.inactiva {
+  background: var(--color-fondo);
+}
+.flecha {
+  margin-left: auto;
+  color: var(--color-texto-secundario);
+  transition: transform 0.15s ease;
+}
+a.tarjeta:hover .flecha {
+  color: var(--color-primario);
+  transform: translateX(2px);
 }
 .numero {
   display: grid;
@@ -154,32 +150,6 @@ h3 {
   border-color: var(--color-primario);
   background: var(--color-primario);
 }
-.lector {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 18px;
-  border-radius: var(--radio-tarjeta);
-  background: var(--color-seleccion-fondo);
-  min-width: 0;
-}
-.lector-pie {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-borde-suave);
-}
-.lado {
-  display: flex;
-  flex: 1 1 120px;
-  min-width: 0;
-}
-.derecha {
-  justify-content: flex-end;
-}
 .enlace {
   min-height: 36px;
   padding: 0 4px;
@@ -218,10 +188,6 @@ h3 {
 @media (max-width: 720px) {
   .clinicas {
     padding: 18px 16px;
-  }
-  .lector {
-    padding: 14px;
-    scroll-margin-top: 12px;
   }
   .indice {
     grid-template-columns: repeat(2, minmax(0, 1fr));

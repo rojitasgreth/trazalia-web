@@ -90,51 +90,44 @@ describe('SeccionesClinicas', () => {
     )!;
   }
 
-  it('muestra todas las secciones y abre la primera con información', async () => {
+  it('muestra todas las secciones con lo que tiene cada una', async () => {
     const elemento = await abrir(respuesta(CON_DATOS));
 
     expect(elemento.querySelectorAll('.tarjeta')).toHaveLength(19);
     expect(elemento.textContent).toContain('2 de 19 con información');
-    expect(elemento.querySelector('.tarjeta[aria-pressed="true"]')?.textContent).toContain(
-      '2 datos',
-    );
-    expect(elemento.querySelector('#titulo-lector')?.textContent).toContain('3. Cribado');
-    expect(elemento.querySelector('#lector-clinico')?.textContent).toContain('Sí');
+    expect(elemento.querySelectorAll('.tarjeta')[2]!.textContent).toContain('2 datos');
   });
 
-  it('sin valoración lista las secciones sin lector', async () => {
+  it('sin valoración lista las secciones sin enlaces', async () => {
     const elemento = await abrir(respuesta(null));
 
     expect(elemento.querySelectorAll('.tarjeta')).toHaveLength(19);
-    expect(elemento.querySelector('#lector-clinico')).toBeNull();
+    expect(elemento.querySelector('a.tarjeta')).toBeNull();
     expect(elemento.textContent).toContain('Las secciones se llenan al iniciar la valoración.');
   });
 
-  it('filtra las secciones y cambia la que se lee', async () => {
+  it('filtra las secciones', async () => {
     const elemento = await abrir(respuesta(CON_DATOS));
 
     boton(elemento, 'Con información').click();
     await estable();
     expect(elemento.querySelectorAll('.tarjeta')).toHaveLength(2);
 
-    boton(elemento, 'Autonomía').click();
-    await estable();
-    expect(elemento.querySelector('#titulo-lector')?.textContent).toContain('13. Autonomía');
-    expect(elemento.querySelector('#lector-clinico')?.textContent).toContain('85');
-
     boton(elemento, 'Sin llenar').click();
     await estable();
     expect(elemento.querySelectorAll('.tarjeta')).toHaveLength(17);
-    expect(elemento.querySelector('#titulo-lector')?.textContent).toContain('1.');
   });
 
-  it('en curso enlaza a editar esa sección; finalizada no', async () => {
+  it('cada tarjeta lleva a su sección, en curso y finalizada', async () => {
     const elemento = await abrir(respuesta(CON_DATOS));
-    const enlace = elemento.querySelector('.lector-pie a');
-    expect(enlace?.getAttribute('href')).toBe('/historias/h1/valoracion?seccion=3');
+    expect(elemento.querySelectorAll('a.tarjeta')[2]!.getAttribute('href')).toBe(
+      '/historias/h1/valoracion?seccion=3',
+    );
 
     const finalizada = await abrir(respuesta(CON_DATOS, 'FINALIZADA'));
-    expect(finalizada.querySelector('.lector-pie a')).toBeNull();
+    expect(finalizada.querySelectorAll('a.tarjeta')[12]!.getAttribute('href')).toBe(
+      '/historias/h1/valoracion?seccion=13',
+    );
   });
 
   it('si falla la carga permite reintentar', async () => {

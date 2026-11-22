@@ -60,70 +60,36 @@
       <ul class="indice">
         @for (t of visibles(); track t.seccion.id) {
           <li>
-            <button
-              type="button"
-              class="tarjeta"
-              [class.con-datos]="t.datos > 0"
-              [disabled]="!r.valoracion"
-              [attr.aria-pressed]="r.valoracion ? abierta() === t : null"
-              [attr.aria-controls]="r.valoracion ? 'lector-clinico' : null"
-              (click)="abrirDesdeIndice(t)"
-            >
-              <span class="numero" aria-hidden="true">{{ t.indice + 1 }}</span>
-              <span class="tarjeta-textos">
-                <span class="tarjeta-nombre">{{ t.nombre }}</span>
-                <span class="tarjeta-estado">
-                  <span class="punto" aria-hidden="true"></span>{{ textoDatos(t.datos) }}
-                </span>
-              </span>
-            </button>
+            @if (r.valoracion) {
+              <a
+                class="tarjeta"
+                [class.con-datos]="t.datos > 0"
+                [routerLink]="['/historias', idHistoria(), 'valoracion']"
+                [queryParams]="{ seccion: t.indice + 1 }"
+              >
+                <ng-container *ngTemplateOutlet="contenidoTarjeta; context: { $implicit: t }" />
+                <span class="flecha" aria-hidden="true">→</span>
+              </a>
+            } @else {
+              <div class="tarjeta inactiva">
+                <ng-container *ngTemplateOutlet="contenidoTarjeta; context: { $implicit: t }" />
+              </div>
+            }
           </li>
         }
       </ul>
-    }
-
-    @if (abierta(); as t) {
-      <section id="lector-clinico" class="lector" aria-labelledby="titulo-lector">
-        <header class="lector-cabecera">
-          <h3 id="titulo-lector">{{ t.seccion.titulo }}</h3>
-          <span class="posicion">Sección {{ t.indice + 1 }} de {{ tarjetas().length }}</span>
-        </header>
-        <app-seccion-ficha
-          [seccion]="t.seccion"
-          [grupo]="grupo()!"
-          [lectura]="true"
-          [imprimir]="true"
-          [datos]="r.datos"
-          [automaticos]="automaticos()"
-        />
-        <footer class="lector-pie">
-          <span class="lado">
-            @if (anterior(); as a) {
-              <button type="button" class="enlace" (click)="abrir(a)">
-                ← <span class="vecina">{{ a.nombre }}</span>
-              </button>
-            }
-          </span>
-          @if (editable()) {
-            <a
-              class="hc-boton"
-              data-variante="secundario"
-              [routerLink]="['/historias', idHistoria(), 'valoracion']"
-              [queryParams]="{ seccion: t.indice + 1 }"
-              >Editar esta sección</a
-            >
-          }
-          <span class="lado derecha">
-            @if (siguiente(); as s) {
-              <button type="button" class="enlace" (click)="abrir(s)">
-                <span class="vecina">{{ s.nombre }}</span> →
-              </button>
-            }
-          </span>
-        </footer>
-      </section>
     }
   } @else {
     <p class="nota" role="status">Cargando las secciones…</p>
   }
 </section>
+
+<ng-template #contenidoTarjeta let-t>
+  <span class="numero" aria-hidden="true">{{ t.indice + 1 }}</span>
+  <span class="tarjeta-textos">
+    <span class="tarjeta-nombre">{{ t.nombre }}</span>
+    <span class="tarjeta-estado">
+      <span class="punto" aria-hidden="true"></span>{{ textoDatos(t.datos) }}
+    </span>
+  </span>
+</ng-template>

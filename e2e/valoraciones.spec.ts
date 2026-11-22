@@ -163,16 +163,13 @@ test('el detalle muestra todas las secciones y abre la elegida para editarla', a
   const clinicas = page.getByRole('region', { name: 'Secciones clínicas' });
   await expect(clinicas.locator('.tarjeta')).toHaveCount(11);
   await expect(clinicas).toContainText('2 de 11 con información');
-  await expect(clinicas.getByRole('region')).toContainText('Dr. Mendoza');
 
-  await clinicas
-    .getByRole('button', { name: /Diagnóstico/ })
-    .first()
-    .click();
-  await expect(clinicas.getByRole('region')).toContainText('Subaguda');
-  await clinicas.getByRole('link', { name: 'Editar esta sección' }).click();
+  await clinicas.getByRole('link', { name: /Diagnóstico/ }).click();
   await expect(page).toHaveURL(/valoracion\?seccion=2$/);
   await expect(page.getByRole('tab', { selected: true })).toContainText('Diagnóstico');
+  await expect(
+    page.getByRole('heading', { name: '2. Diagnóstico, mecanismo y antecedentes' }),
+  ).toBeVisible();
 });
 
 test('Neurología: en el cribado cada fila conserva su propia opción', async ({ page }) => {
