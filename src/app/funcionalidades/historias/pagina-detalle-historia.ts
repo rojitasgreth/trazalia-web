@@ -11,6 +11,7 @@ import type {
   HistoriaDetalle,
   TipoHistoria,
 } from '../../core/historias/historias.model';
+import { SeccionesClinicas } from '../valoraciones/secciones-clinicas';
 import { DialogoGestion, type AccionGestion } from './compartido/dialogo-gestion';
 import {
   CAMPOS_REPRESENTANTE,
@@ -51,7 +52,7 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
 /** B20–B24 · Detalle de una historia: datos personales y estado (SPEC §19). */
 @Component({
   selector: 'app-pagina-detalle-historia',
-  imports: [RouterLink, DialogoGestion],
+  imports: [RouterLink, DialogoGestion, SeccionesClinicas],
   template: `
     <div class="pagina">
       @if (guardada()) {
@@ -206,13 +207,14 @@ const CAMPOS_EN_CABECERA = new Set(['nombre', 'apellido']);
               </section>
             }
 
+            <app-secciones-clinicas [idHistoria]="h.idHistoria" />
+
             <section class="futuras" aria-labelledby="titulo-futuras">
-              <h2 id="titulo-futuras">Secciones clínicas</h2>
+              <h2 id="titulo-futuras">Próxima fase</h2>
               <ul>
                 @for (s of seccionesFuturas; track s) {
                   <li>
                     <span class="futura-nombre">{{ s }}</span>
-                    <span class="futura-nota">Próxima fase</span>
                   </li>
                 }
               </ul>
@@ -312,13 +314,7 @@ export class PaginaDetalleHistoria {
   protected readonly procesando = signal(false);
   protected readonly errorAccion = signal<string | null>(null);
 
-  protected readonly seccionesFuturas = [
-    'Anamnesis',
-    'Antecedentes',
-    'Valoraciones',
-    'Evoluciones',
-    'Documentos',
-  ];
+  protected readonly seccionesFuturas = ['Evoluciones', 'Documentos'];
 
   /** B20: aviso de guardado cuando se llega desde el formulario (crear o editar). */
   protected readonly guardada = signal<'creada' | 'editada' | null>(

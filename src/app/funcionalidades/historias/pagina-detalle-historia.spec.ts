@@ -1,10 +1,11 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { Component, provideZonelessChangeDetection } from '@angular/core';
+import { Component, input, provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import type { HistoriaDetalle } from '../../core/historias/historias.model';
+import { SeccionesClinicas } from '../valoraciones/secciones-clinicas';
 import { PaginaDetalleHistoria } from './pagina-detalle-historia';
 
 @Component({ template: '' })
@@ -73,6 +74,12 @@ function neuroCarlos(cambios: Partial<HistoriaDetalle> = {}): HistoriaDetalle {
   };
 }
 
+// Las secciones clínicas tienen su propia prueba (secciones-clinicas.spec.ts).
+@Component({ selector: 'app-secciones-clinicas', template: '<h2>Secciones clínicas</h2>' })
+class SeccionesClinicasFalsa {
+  readonly idHistoria = input.required<string>();
+}
+
 describe('PaginaDetalleHistoria', () => {
   let http: HttpTestingController;
   let harness: RouterTestingHarness;
@@ -88,6 +95,10 @@ describe('PaginaDetalleHistoria', () => {
           { path: 'origen', component: Vacia },
         ]),
       ],
+    });
+    TestBed.overrideComponent(PaginaDetalleHistoria, {
+      remove: { imports: [SeccionesClinicas] },
+      add: { imports: [SeccionesClinicasFalsa] },
     });
     http = TestBed.inject(HttpTestingController);
     harness = await RouterTestingHarness.create();
@@ -130,6 +141,9 @@ describe('PaginaDetalleHistoria', () => {
     expect(otra?.getAttribute('href')).toBe('/historias/h2');
     expect(otra?.textContent).toContain('Traumatología del adulto');
     expect(texto).toContain('Secciones clínicas');
+    expect(texto).toContain('Evoluciones');
+    expect(texto).toContain('Documentos');
+    expect(texto).not.toContain('Anamnesis');
     // RF-018: el propietario puede editar los datos personales.
     expect(elemento.querySelector('.acciones a')?.getAttribute('href')).toBe(
       '/historias/h1/editar',

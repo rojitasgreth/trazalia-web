@@ -3,6 +3,7 @@ import type {
   Contenido,
   ErrorCampo,
   Ficha,
+  Valoracion,
   ValorContenido,
 } from '../../core/valoraciones/valoraciones.model';
 
@@ -135,6 +136,43 @@ export function contenidoDe(grupo: GrupoFicha): Contenido {
     contenido[clave] = typeof valor === 'string' ? valor.trim() : valor;
   }
   return contenido;
+}
+
+/** Cuántos datos llenos tiene cada sección de la ficha, en su orden. */
+export function datosPorSeccion(ficha: Ficha, contenido: Contenido): number[] {
+  const claves = Object.entries(contenido)
+    .filter(([, v]) => v !== '' && v !== false && !(Array.isArray(v) && v.length === 0))
+    .map(([clave]) => clave);
+  return ficha.secciones.map((s) => claves.filter((c) => c.startsWith(`${s.id}.`)).length);
+}
+
+function dosDigitos(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+export function fechaCorta(iso: string): string {
+  const d = new Date(iso);
+  return `${dosDigitos(d.getDate())}/${dosDigitos(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+export function hora(iso: string): string {
+  const d = new Date(iso);
+  return `${dosDigitos(d.getHours())}:${dosDigitos(d.getMinutes())}`;
+}
+
+/** Datos que la valoración registra sola al iniciarse (RF-C03). */
+export function automaticosDe(v: Valoracion | null): {
+  fisioterapeuta: string;
+  fechaHora: string;
+  fecha: string;
+} {
+  return v
+    ? {
+        fisioterapeuta: v.nombreFisioterapeuta,
+        fechaHora: `${fechaCorta(v.fechaInicio)} ${hora(v.fechaInicio)}`,
+        fecha: fechaCorta(v.fechaInicio),
+      }
+    : { fisioterapeuta: '', fechaHora: '', fecha: '' };
 }
 
 function numero(texto: unknown): number | null {

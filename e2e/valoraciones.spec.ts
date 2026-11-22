@@ -119,6 +119,62 @@ test('Neurología: un número con unidades señala el campo y no se guarda hasta
   expect(guardados[0]!.contenido).toEqual({ 's13.barthel': '85' });
 });
 
+test('el detalle muestra todas las secciones y abre la elegida para editarla', async ({ page }) => {
+  await iniciarSesion(page);
+  const contenido = { 's2.fase': 'Subaguda', 's1.medico_tratante': 'Dr. Mendoza' };
+  const historia = {
+    idHistoria: ID,
+    tipo: 'TRAUMA_ADULTO',
+    estado: 'BORRADOR',
+    archivada: false,
+    nombre: 'Carlos',
+    apellido: 'Andrade',
+    nacionalidad: 'V',
+    cedula: '15482301',
+    sinDocumento: false,
+    telefono: '04125550134',
+    fechaNacimiento: '1985-03-14',
+    fechaCreacion: '2026-11-16T12:00:00.000Z',
+    fechaActualizacion: '2026-11-16T12:00:00.000Z',
+    fechaArchivo: null,
+    datos: {
+      nombre: 'Carlos',
+      apellido: 'Andrade',
+      nacionalidad: 'V',
+      cedula: '15482301',
+      sinDocumento: false,
+      fechaNacimiento: '1985-03-14',
+      fuenteInformacion: [],
+      modalidad: 'DOMICILIO',
+      idCentro: null,
+    },
+    representante: null,
+    datosInfantiles: null,
+    camposFaltantes: [],
+    puedeIniciarValoracion: true,
+    tieneRegistrosClinicos: true,
+    centro: null,
+    otrasHistorias: [],
+  };
+  await page.route(`**/api/v1/historias/${ID}`, (r) => r.fulfill({ json: { historia } }));
+  await page.route(RUTA, (r) => r.fulfill({ json: respuesta({ ...EN_CURSO, contenido }) }));
+
+  await page.goto(`/historias/${ID}`);
+  const clinicas = page.getByRole('region', { name: 'Secciones clínicas' });
+  await expect(clinicas.locator('.tarjeta')).toHaveCount(11);
+  await expect(clinicas).toContainText('2 de 11 con información');
+  await expect(clinicas.getByRole('region')).toContainText('Dr. Mendoza');
+
+  await clinicas
+    .getByRole('button', { name: /Diagnóstico/ })
+    .first()
+    .click();
+  await expect(clinicas.getByRole('region')).toContainText('Subaguda');
+  await clinicas.getByRole('link', { name: 'Editar esta sección' }).click();
+  await expect(page).toHaveURL(/valoracion\?seccion=2$/);
+  await expect(page.getByRole('tab', { selected: true })).toContainText('Diagnóstico');
+});
+
 test('Neurología: en el cribado cada fila conserva su propia opción', async ({ page }) => {
   await iniciarSesion(page);
   const fichaNeuro = JSON.parse(

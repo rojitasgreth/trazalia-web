@@ -86,6 +86,10 @@ async function iniciarSesionComo(page: Page, usuario: typeof FISIO) {
   await page.route('**/api/v1/historias/coincidencias', (ruta) =>
     ruta.fulfill({ json: { resultado: 'ninguna' } }),
   );
+  // Igual con las secciones clínicas del detalle.
+  await page.route('**/api/v1/historias/*/valoracion', (ruta) =>
+    ruta.fulfill({ status: 404, json: { mensaje: 'No encontrada.' } }),
+  );
 }
 
 async function simularListado(page: Page, datos: unknown[]) {

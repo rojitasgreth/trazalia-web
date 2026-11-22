@@ -1,0 +1,129 @@
+<section class="clinicas" aria-labelledby="titulo-clinicas">
+  <header class="cabecera">
+    <h2 id="titulo-clinicas">Secciones clínicas</h2>
+    @if (respuesta()) {
+      <span class="resumen">{{ conDatos() }} de {{ tarjetas().length }} con información</span>
+    }
+  </header>
+
+  @if (carga.error()) {
+    <div class="fallo" role="status">
+      <span>No se pudieron cargar las secciones.</span>
+      <button type="button" class="enlace" (click)="carga.reload()">Reintentar</button>
+    </div>
+  } @else if (respuesta(); as r) {
+    <div
+      class="barra"
+      role="progressbar"
+      aria-label="Secciones con información"
+      aria-valuemin="0"
+      [attr.aria-valuemax]="tarjetas().length"
+      [attr.aria-valuenow]="conDatos()"
+    >
+      <span class="barra-relleno" [style.width.%]="porcentaje()"></span>
+    </div>
+
+    @if (r.valoracion) {
+      <div class="filtros" role="group" aria-label="Filtrar secciones">
+        <button
+          type="button"
+          class="filtro"
+          [attr.aria-pressed]="filtro() === 'todas'"
+          (click)="filtrar('todas')"
+        >
+          Todas <span class="cuenta">{{ tarjetas().length }}</span>
+        </button>
+        <button
+          type="button"
+          class="filtro"
+          [attr.aria-pressed]="filtro() === 'con'"
+          (click)="filtrar('con')"
+        >
+          Con información <span class="cuenta">{{ conDatos() }}</span>
+        </button>
+        <button
+          type="button"
+          class="filtro"
+          [attr.aria-pressed]="filtro() === 'sin'"
+          (click)="filtrar('sin')"
+        >
+          Sin llenar <span class="cuenta">{{ tarjetas().length - conDatos() }}</span>
+        </button>
+      </div>
+    } @else {
+      <p class="nota">Las secciones se llenan al iniciar la valoración.</p>
+    }
+
+    @if (visibles().length === 0) {
+      <p class="nota">No hay secciones en este filtro.</p>
+    } @else {
+      <ul class="indice">
+        @for (t of visibles(); track t.seccion.id) {
+          <li>
+            <button
+              type="button"
+              class="tarjeta"
+              [class.con-datos]="t.datos > 0"
+              [disabled]="!r.valoracion"
+              [attr.aria-pressed]="r.valoracion ? abierta() === t : null"
+              [attr.aria-controls]="r.valoracion ? 'lector-clinico' : null"
+              (click)="abrirDesdeIndice(t)"
+            >
+              <span class="numero" aria-hidden="true">{{ t.indice + 1 }}</span>
+              <span class="tarjeta-textos">
+                <span class="tarjeta-nombre">{{ t.nombre }}</span>
+                <span class="tarjeta-estado">
+                  <span class="punto" aria-hidden="true"></span>{{ textoDatos(t.datos) }}
+                </span>
+              </span>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+
+    @if (abierta(); as t) {
+      <section id="lector-clinico" class="lector" aria-labelledby="titulo-lector">
+        <header class="lector-cabecera">
+          <h3 id="titulo-lector">{{ t.seccion.titulo }}</h3>
+          <span class="posicion">Sección {{ t.indice + 1 }} de {{ tarjetas().length }}</span>
+        </header>
+        <app-seccion-ficha
+          [seccion]="t.seccion"
+          [grupo]="grupo()!"
+          [lectura]="true"
+          [imprimir]="true"
+          [datos]="r.datos"
+          [automaticos]="automaticos()"
+        />
+        <footer class="lector-pie">
+          <span class="lado">
+            @if (anterior(); as a) {
+              <button type="button" class="enlace" (click)="abrir(a)">
+                ← <span class="vecina">{{ a.nombre }}</span>
+              </button>
+            }
+          </span>
+          @if (editable()) {
+            <a
+              class="hc-boton"
+              data-variante="secundario"
+              [routerLink]="['/historias', idHistoria(), 'valoracion']"
+              [queryParams]="{ seccion: t.indice + 1 }"
+              >Editar esta sección</a
+            >
+          }
+          <span class="lado derecha">
+            @if (siguiente(); as s) {
+              <button type="button" class="enlace" (click)="abrir(s)">
+                <span class="vecina">{{ s.nombre }}</span> →
+              </button>
+            }
+          </span>
+        </footer>
+      </section>
+    }
+  } @else {
+    <p class="nota" role="status">Cargando las secciones…</p>
+  }
+</section>

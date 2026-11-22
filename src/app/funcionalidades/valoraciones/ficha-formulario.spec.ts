@@ -3,6 +3,7 @@ import {
   calcularImc,
   construirGrupo,
   contenidoDe,
+  datosPorSeccion,
   erroresDeFormato,
   estructuraDe,
   textoDe,
@@ -70,6 +71,18 @@ describe('ficha-formulario (SPEC C §7–§8)', () => {
     expect(calcularImc('78,5', '176')).toBe('25,3');
     expect(calcularImc('', '176')).toBe('');
     expect(calcularImc('abc', '176')).toBe('');
+  });
+
+  it('cuenta los datos llenos de cada sección sin confundir s1 con s13', () => {
+    const datos = datosPorSeccion(neuro, {
+      's13.barthel': '85',
+      's13.lawton_brody': '',
+      's3.cribado_de_seguridad.f1.c2': 'Sí',
+    });
+    expect(datos).toHaveLength(19);
+    expect(datos[0]).toBe(0);
+    expect(datos[2]).toBe(1);
+    expect(datos[12]).toBe(1);
   });
 
   it('señala los números con unidades y acepta los decimales', () => {

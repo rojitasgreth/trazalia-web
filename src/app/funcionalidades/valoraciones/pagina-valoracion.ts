@@ -20,11 +20,14 @@ import type {
 import { DialogoHistoria } from '../historias/compartido/dialogo-historia';
 import { TIPOS } from '../historias/compartido/presentacion';
 import {
+  automaticosDe,
   calcularImc,
   construirGrupo,
   contenidoDe,
   erroresDeFormato,
   estructuraDe,
+  fechaCorta,
+  hora,
   idCampo,
   ubicarCampo,
   type EstructuraFicha,
@@ -35,20 +38,6 @@ import { SeccionFicha, type Automaticos } from './seccion-ficha';
 /** Interrumpe el guardado (y lo que venga después) sin llamar a la API. */
 class ContenidoInvalido {
   constructor(readonly errores: ErrorCampo[]) {}
-}
-
-function dosDigitos(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-function fechaCorta(iso: string): string {
-  const d = new Date(iso);
-  return `${dosDigitos(d.getDate())}/${dosDigitos(d.getMonth() + 1)}/${d.getFullYear()}`;
-}
-
-function hora(iso: string): string {
-  const d = new Date(iso);
-  return `${dosDigitos(d.getHours())}:${dosDigitos(d.getMinutes())}`;
 }
 
 /**
@@ -69,7 +58,10 @@ export class PaginaValoracion {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
-  protected readonly idHistoria = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
+  private readonly ruta = inject(ActivatedRoute).snapshot;
+  protected readonly idHistoria = this.ruta.paramMap.get('id') ?? '';
+  /** `?seccion=n` desde "Editar esta sección" del detalle; se aplica una sola vez. */
+  private seccionPedida: number | null = Number(this.ruta.queryParamMap.get('seccion')) || null;
 
   protected readonly respuesta = signal<RespuestaValoracion | null>(null);
   protected readonly errorCarga = signal(false);
@@ -99,16 +91,7 @@ export class PaginaValoracion {
     const d = this.respuesta()?.datos;
     return d ? [d.nombre, d.documento, d.edad].filter(Boolean).join(' · ') : '';
   });
-  protected readonly automaticos = computed<Automaticos>(() => {
-    const v = this.valoracion();
-    return v
-      ? {
-          fisioterapeuta: v.nombreFisioterapeuta,
-          fechaHora: `${fechaCorta(v.fechaInicio)} ${hora(v.fechaInicio)}`,
-          fecha: fechaCorta(v.fechaInicio),
-        }
-      : { fisioterapeuta: '', fechaHora: '', fecha: '' };
-  });
+  protected readonly automaticos = computed<Automaticos>(() => automaticosDe(this.valoracion()));
   protected readonly finalizadaEl = computed(() => {
     const fin = this.valoracion()?.fechaFinalizacion;
     return fin ? `${fechaCorta(fin)} a las ${hora(fin)}` : '';
@@ -133,6 +116,11 @@ export class PaginaValoracion {
   private aplicar(r: RespuestaValoracion, reconstruir: boolean): void {
     this.respuesta.set(r);
     if (!r.valoracion || !reconstruir) return;
+    const pedida = this.seccionPedida;
+    this.seccionPedida = null;
+    if (pedida && Number.isInteger(pedida) && pedida >= 1 && pedida <= r.ficha.secciones.length) {
+      this.activa.set(pedida - 1);
+    }
     this.suscripciones.forEach((s) => s.unsubscribe());
     this.suscripciones = [];
     this.erroresCampo.set({});

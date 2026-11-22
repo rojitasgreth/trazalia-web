@@ -200,10 +200,6 @@ dd[data-estado='opcional'] {
   color: var(--color-texto-medio);
   font-weight: 700;
 }
-.futura-nota {
-  color: var(--color-texto-secundario);
-  font-size: 12px;
-}
 .lateral {
   display: flex;
   flex: 1 1 300px;
