@@ -85,6 +85,15 @@ textarea {
   line-height: 1.4;
   color: var(--color-texto-secundario);
 }
+.contador {
+  align-self: flex-end;
+  font-size: 12px;
+  color: var(--color-texto-secundario);
+}
+.contador.al-limite {
+  color: var(--color-aviso);
+  font-weight: 600;
+}
 .error-campo {
   display: block;
   font-size: 12px;

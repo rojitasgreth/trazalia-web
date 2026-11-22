@@ -10,6 +10,8 @@ import type {
   Valoracion,
 } from '../../core/valoraciones/valoraciones.model';
 import { PaginaValoracion } from './pagina-valoracion';
+import fichaAdultoMayor from './pruebas/ficha-adulto-mayor.json';
+import fichaInfantil from './pruebas/ficha-infantil.json';
 import fichaNeuro from './pruebas/ficha-neuro.json';
 import fichaTrauma from './pruebas/ficha-trauma.json';
 
@@ -196,6 +198,36 @@ describe('PaginaValoracion', () => {
     peticion.flush(
       respuesta({ version: 2, contenido: peticion.request.body.contenido }, fichaNeuro),
     );
+  });
+
+  it.each([
+    ['Traumatología', fichaTrauma, 1],
+    ['Neurología', fichaNeuro, 1],
+    ['Infantil', fichaInfantil, 1],
+    ['Adulto mayor', fichaAdultoMayor, 4],
+  ])('%s: los textos largos limitan a 1000 y cuentan los caracteres', async (_, ficha, pestana) => {
+    const elemento = await abrir(respuesta({}, ficha));
+    (elemento.querySelector(`#pestana-${pestana}`) as HTMLButtonElement).click();
+    await estable();
+
+    const areas = Array.from(elemento.querySelectorAll('textarea'));
+    expect(areas.length).toBeGreaterThan(0);
+    expect(areas.every((a) => a.getAttribute('maxlength') === '1000')).toBe(true);
+    const area = areas[0]!;
+    const contador = () => area.parentElement!.querySelector('.contador')!;
+    expect(contador().textContent).toContain('0 / 1000 caracteres');
+
+    area.value = 'Dolor';
+    area.dispatchEvent(new Event('input'));
+    await estable();
+    expect(contador().textContent).toContain('5 / 1000 caracteres');
+    expect(contador().classList.contains('al-limite')).toBe(false);
+
+    area.value = 'a'.repeat(1000);
+    area.dispatchEvent(new Event('input'));
+    await estable();
+    expect(contador().textContent).toContain('1000 / 1000 caracteres');
+    expect(contador().classList.contains('al-limite')).toBe(true);
   });
 
   it('un número con unidades no se envía: señala el campo y conserva lo escrito', async () => {

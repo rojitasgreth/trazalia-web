@@ -8,7 +8,7 @@ import type {
   Seccion,
   ValorContenido,
 } from '../../core/valoraciones/valoraciones.model';
-import { idCampo, textoDe, type GrupoFicha } from './ficha-formulario';
+import { idCampo, MAX_TEXTO_LARGO, textoDe, type GrupoFicha } from './ficha-formulario';
 
 export interface Automaticos {
   fisioterapeuta: string;
@@ -55,6 +55,7 @@ export class SeccionFicha {
   readonly recalcular = output<string>();
 
   protected readonly coloresDolor = COLORES_DOLOR;
+  protected readonly maxTextoLargo = MAX_TEXTO_LARGO;
 
   protected control(clave: string): FormControl<ValorContenido> {
     return this.grupo().controls[clave]!;
@@ -70,6 +71,11 @@ export class SeccionFicha {
 
   protected idDe(clave: string): string {
     return idCampo(clave);
+  }
+
+  protected longitud(clave: string): number {
+    const valor = this.valor(clave);
+    return typeof valor === 'string' ? valor.length : 0;
   }
 
   protected errorDe(clave: string): string | null {

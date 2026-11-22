@@ -99,9 +99,23 @@
                       <textarea
                         [id]="idDe(campo.id)"
                         rows="3"
+                        [attr.maxlength]="maxTextoLargo"
                         [formControl]="control(campo.id)"
                         [placeholder]="campo.placeholder ?? ''"
+                        [attr.aria-invalid]="errorDe(campo.id) ? 'true' : null"
+                        [attr.aria-describedby]="descripcion(campo.id, true)"
                       ></textarea>
+                      <span
+                        class="contador"
+                        [id]="idDe(campo.id) + '-ayuda'"
+                        [class.al-limite]="longitud(campo.id) >= maxTextoLargo"
+                        >{{ longitud(campo.id) }} / {{ maxTextoLargo }} caracteres</span
+                      >
+                      @if (errorDe(campo.id); as motivo) {
+                        <span class="error-campo" [id]="idDe(campo.id) + '-error'">{{
+                          motivo
+                        }}</span>
+                      }
                     }
                     @case ('unica') {
                       <fieldset>

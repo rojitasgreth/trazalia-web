@@ -74,6 +74,9 @@ export function idCampo(clave: string): string {
   return `campo-${clave.replace(/[^\w-]/g, '-')}`;
 }
 
+/** Límite de los textos largos; la API aplica el mismo. */
+export const MAX_TEXTO_LARGO = 1000;
+
 const NUMERO = /^-?(\d+([.,]\d+)?|[.,]\d+)$/;
 
 /** Los números mal escritos se señalan sin ir al servidor; este sigue validando todo. */
