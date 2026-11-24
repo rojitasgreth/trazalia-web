@@ -3,6 +3,8 @@ import type {
   Contenido,
   ErrorCampo,
   Ficha,
+  Formato,
+  Seccion,
   Valoracion,
   ValorContenido,
 } from '../../core/valoraciones/valoraciones.model';
@@ -18,15 +20,43 @@ export interface EstructuraFicha {
   dependencias: Map<string, string>;
   /** RF-C08: IMC → [peso, talla]. */
   imc: Map<string, [string, string]>;
-  /** Claves que solo admiten un número; la unidad ya aparece junto al campo. */
-  numericos: Set<string>;
+  /** Claves numéricas y su formato (`null`: un número sin rango, como el IMC). */
+  formatos: Map<string, Formato | null>;
+}
+
+/** Claves numéricas de unas secciones, con el formato que trae la ficha. */
+export function formatosDe(secciones: Seccion[]): Map<string, Formato | null> {
+  const formatos = new Map<string, Formato | null>();
+  for (const bloque of secciones.flatMap((s) => s.bloques)) {
+    if (bloque.k === 'campos') {
+      for (const c of bloque.campos) {
+        if (c.k === 'numero') formatos.set(c.id, c.formato ?? null);
+        if (c.k === 'imc') formatos.set(c.id, null);
+        if (c.k === 'grupo') {
+          for (const p of c.partes) if (p.formato) formatos.set(`${c.id}.${p.id}`, p.formato);
+        }
+      }
+    }
+    if (bloque.k === 'tabla') {
+      for (const celda of bloque.filas.flat()) {
+        if (celda.k === 'texto' && celda.formato) formatos.set(celda.id, celda.formato);
+        if (celda.k === 'partes') {
+          for (const p of celda.partes) {
+            if (p.formato || p.id === 'imc') {
+              formatos.set(`${celda.id}.${p.id}`, p.formato ?? null);
+            }
+          }
+        }
+      }
+    }
+  }
+  return formatos;
 }
 
 export function estructuraDe(ficha: Ficha): EstructuraFicha {
   const controles = new Map<string, TipoControl>();
   const dependencias = new Map<string, string>();
   const imc = new Map<string, [string, string]>();
-  const numericos = new Set<string>();
   for (const seccion of ficha.secciones) {
     for (const bloque of seccion.bloques) {
       if (bloque.k === 'campos') {
@@ -40,7 +70,6 @@ export function estructuraDe(ficha: Ficha): EstructuraFicha {
           } else {
             controles.set(c.id, 'texto');
             if (c.k === 'imc') imc.set(c.id, [c.peso, c.talla]);
-            if (c.k === 'imc' || c.k === 'numero') numericos.add(c.id);
           }
         }
       }
@@ -59,14 +88,13 @@ export function estructuraDe(ficha: Ficha): EstructuraFicha {
             // Traumatología §5: Peso/talla/IMC en una celda de tres partes.
             if (celda.partes.some((p) => p.id === 'imc')) {
               imc.set(`${celda.id}.imc`, [`${celda.id}.p1`, `${celda.id}.p2`]);
-              numericos.add(`${celda.id}.imc`);
             }
           }
         }
       }
     }
   }
-  return { controles, dependencias, imc, numericos };
+  return { controles, dependencias, imc, formatos: formatosDe(ficha.secciones) };
 }
 
 /** Id del elemento de una clave del contenido ("s3.dolor" → "campo-s3-dolor"). */
@@ -78,17 +106,83 @@ export function idCampo(clave: string): string {
 export const MAX_TEXTO_LARGO = 1000;
 
 const NUMERO = /^-?(\d+([.,]\d+)?|[.,]\d+)$/;
+const PRESION = /^\d{2,3}\/\d{2,3}$/;
+
+function conComa(n: number): string {
+  return String(n).replace('.', ',');
+}
+
+/** Misma regla que la API (trazalia-api, dominio/contenido.ts `errorDeFormato`). */
+export function errorDeFormato(texto: string, formato: Formato | null): string | null {
+  if (formato?.k === 'presion') {
+    return PRESION.test(texto) ? null : 'Escribe la presión como 120/80.';
+  }
+  if (!NUMERO.test(texto)) return 'Escribe solo el número, sin unidades.';
+  if (!formato) return null;
+  if (formato.k === 'entero' && !/^-?\d+$/.test(texto)) return 'Debe ser un número entero.';
+  const valor = Number(texto.replace(',', '.'));
+  return valor < formato.min || valor > formato.max
+    ? `Debe estar entre ${conComa(formato.min)} y ${conComa(formato.max)}.`
+    : null;
+}
 
 /** Los números mal escritos se señalan sin ir al servidor; este sigue validando todo. */
 export function erroresDeFormato(estructura: EstructuraFicha, grupo: GrupoFicha): ErrorCampo[] {
   const errores: ErrorCampo[] = [];
-  for (const clave of estructura.numericos) {
-    const valor = grupo.controls[clave]?.value;
-    if (typeof valor === 'string' && valor.trim() && !NUMERO.test(valor.trim())) {
-      errores.push({ clave, mensaje: 'Escribe solo el número, sin unidades.' });
-    }
+  for (const [clave, formato] of estructura.formatos) {
+    const control = grupo.controls[clave];
+    const valor = control?.enabled ? control.value : '';
+    if (typeof valor !== 'string' || !valor.trim()) continue;
+    const mensaje = errorDeFormato(valor.trim(), formato);
+    if (mensaje) errores.push({ clave, mensaje });
   }
   return errores;
+}
+
+/** Texto guía del campo: el rango ("0–10") o el ejemplo de la presión. */
+export function placeholderDe(formato: Formato | null): string {
+  if (!formato) return 'Solo el número';
+  if (formato.k === 'presion') return '120/80';
+  return `${conComa(formato.min)}–${conComa(formato.max)}`;
+}
+
+/** Caracteres máximos que admite un formato (con signo y dos decimales). */
+export function largoDe(formato: Formato | null): number {
+  if (!formato) return 12;
+  if (formato.k === 'presion') return 7;
+  const signo = formato.min < 0 ? 1 : 0;
+  const enteros = String(Math.trunc(formato.max)).length;
+  return signo + enteros + (formato.k === 'decimal' ? 3 : 0);
+}
+
+/**
+ * Deja solo lo que el formato admite mientras se escribe: dígitos, una coma
+ * decimal (el punto se cambia por coma), el signo si el rango es negativo y,
+ * en la presión, la barra tras la sistólica.
+ */
+export function limpiarNumero(texto: string, formato: Formato | null): string {
+  if (formato?.k === 'presion') {
+    const [antes = '', ...resto] = texto.split('/');
+    const sistolica = antes.replace(/\D/g, '');
+    if (resto.length === 0) {
+      return sistolica.length > 3 ? `${sistolica.slice(0, 3)}/${sistolica.slice(3, 6)}` : sistolica;
+    }
+    return `${sistolica.slice(0, 3)}/${resto.join('').replace(/\D/g, '').slice(0, 3)}`;
+  }
+  const signo = formato && formato.min < 0 && texto.trimStart().startsWith('-') ? '-' : '';
+  let cuerpo = '';
+  let decimales = -1;
+  for (const caracter of texto) {
+    if (/\d/.test(caracter)) {
+      if (decimales >= 2) continue;
+      cuerpo += caracter;
+      if (decimales >= 0) decimales++;
+    } else if ((caracter === ',' || caracter === '.') && decimales < 0 && formato?.k !== 'entero') {
+      cuerpo += ',';
+      decimales = 0;
+    }
+  }
+  return signo + cuerpo;
 }
 
 /** Pestaña y nombre visible de una clave, para decir qué campo hay que corregir. */

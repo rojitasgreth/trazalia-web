@@ -72,7 +72,33 @@ async function iniciarSesion(page: Page) {
   );
 }
 
-test('Neurología: un número con unidades señala el campo y no se guarda hasta corregirlo', async ({
+test('Traumatología: la PA se escribe sola con su barra y el dolor no pasa de 10', async ({
+  page,
+}) => {
+  await iniciarSesion(page);
+  await page.route(RUTA, (r) => r.fulfill({ json: respuesta({ ...EN_CURSO, contenido: {} }) }));
+
+  await page.goto(`/historias/${ID}/valoracion`);
+  await page
+    .getByRole('tab', { name: /Anamnesis|3\./ })
+    .first()
+    .click();
+  const actual = page.getByLabel('Actual', { exact: true });
+  await expect(actual).toHaveAttribute('placeholder', '0–10');
+  await actual.pressSequentially('8a');
+  await expect(actual).toHaveValue('8');
+
+  await page.getByRole('tab', { name: /Signos vitales/ }).click();
+  const pa = page.getByRole('textbox', { name: /Reposo: PA mmHg/ });
+  await expect(pa).toHaveAttribute('placeholder', '120/80');
+  await pa.pressSequentially('12080');
+  await expect(pa).toHaveValue('120/80');
+  const peso = page.getByRole('textbox', { name: /Reposo: Peso\/talla\/IMC · Peso/ });
+  await peso.pressSequentially('78.5kg');
+  await expect(peso).toHaveValue('78,5');
+});
+
+test('Neurología: un número fuera de rango señala el campo y no se guarda hasta corregirlo', async ({
   page,
 }) => {
   await iniciarSesion(page);
@@ -104,10 +130,11 @@ test('Neurología: un número con unidades señala el campo y no se guarda hasta
   await page.goto(`/historias/${ID}/valoracion`);
   await page.getByRole('tab', { name: /13\. Autonomía/ }).click();
   const barthel = page.getByLabel('Barthel', { exact: true });
-  await barthel.fill('85/100');
+  await barthel.fill('150');
   await page.getByRole('tab', { name: /14\./ }).click();
 
   await expect(page.getByRole('alert')).toContainText('Revisa «Barthel»');
+  await expect(page.getByRole('alert')).toContainText('Debe estar entre 0 y 100.');
   await expect(barthel).toHaveAttribute('aria-invalid', 'true');
   await expect(barthel).toBeFocused();
   expect(guardados).toHaveLength(0);

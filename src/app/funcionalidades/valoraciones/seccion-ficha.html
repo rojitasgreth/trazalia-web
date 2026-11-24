@@ -179,6 +179,8 @@
                                   "
                                   [attr.max]="p.tipo === 'fecha' ? '9999-12-31' : null"
                                   [style.width.px]="p.ancho ?? 96"
+                                  [appFormato]="formatoDe(campo.id + '.' + p.id)"
+                                  [placeholder]="guia(campo.id + '.' + p.id)"
                                   [formControl]="control(campo.id + '.' + p.id)"
                                   [attr.aria-invalid]="
                                     errorDe(campo.id + '.' + p.id) ? 'true' : null
@@ -207,16 +209,14 @@
                         <input
                           [id]="idDe(campo.id)"
                           [type]="campo.k === 'fecha' ? 'date' : 'text'"
-                          [attr.inputmode]="
-                            campo.k === 'numero' || campo.k === 'imc' ? 'decimal' : null
-                          "
+                          [appFormato]="formatoDe(campo.id)"
                           [attr.max]="campo.k === 'fecha' ? '9999-12-31' : null"
                           [class.calculado]="campo.k === 'imc'"
                           [placeholder]="
                             campo.k === 'texto'
                               ? (campo.placeholder ?? '')
                               : campo.k === 'numero'
-                                ? 'Solo el número'
+                                ? guia(campo.id)
                                 : ''
                           "
                           [formControl]="control(campo.id)"
@@ -328,6 +328,7 @@
                                 class="mini-entrada"
                                 [id]="idDe(celda.id + '.' + p.id)"
                                 [class.calculado]="p.id === 'imc'"
+                                [appFormato]="formatoDe(celda.id + '.' + p.id)"
                                 [attr.aria-label]="
                                   etiquetaCelda(bloque, fila, c) + ' · ' + (p.etiqueta || 'valor')
                                 "
@@ -373,7 +374,8 @@
                             [attr.max]="celda.tipo === 'fecha' ? '9999-12-31' : null"
                             class="entrada-celda"
                             [attr.aria-label]="etiquetaCelda(bloque, fila, c)"
-                            [placeholder]="celda.placeholder ?? ''"
+                            [appFormato]="formatoDe(celda.id)"
+                            [placeholder]="guia(celda.id, celda.placeholder)"
                             [formControl]="control(celda.id)"
                             [class.inactiva]="deshabilitada(celda)"
                             [attr.aria-invalid]="errorDe(celda.id) ? 'true' : null"

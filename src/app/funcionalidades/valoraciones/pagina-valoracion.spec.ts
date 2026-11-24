@@ -230,19 +230,25 @@ describe('PaginaValoracion', () => {
     expect(contador().classList.contains('al-limite')).toBe(true);
   });
 
-  it('un número con unidades no se envía: señala el campo y conserva lo escrito', async () => {
+  it('un número fuera de rango no se envía: señala el campo y conserva lo escrito', async () => {
     const elemento = await abrir(respuesta({}, fichaNeuro));
     (elemento.querySelector('#pestana-12') as HTMLButtonElement).click();
     await estable();
-    escribir(elemento, '#campo-s13-barthel', '85/100');
+    const barthel = elemento.querySelector<HTMLInputElement>('#campo-s13-barthel')!;
+    expect(barthel.getAttribute('inputmode')).toBe('numeric');
+    expect(barthel.getAttribute('maxlength')).toBe('3');
+    expect(barthel.placeholder).toBe('0–100');
+    // Lo que no es un dígito no llega a escribirse.
+    escribir(elemento, '#campo-s13-barthel', '85/1');
+    expect(barthel.value).toBe('851');
 
     (elemento.querySelector('#pestana-13') as HTMLButtonElement).click();
     await estable();
     http.expectNone((r) => r.method === 'PUT');
     expect(elemento.querySelector('#pestana-12')!.getAttribute('aria-selected')).toBe('true');
     expect(elemento.textContent).toContain('Revisa «Barthel»');
-    const barthel = elemento.querySelector<HTMLInputElement>('#campo-s13-barthel')!;
-    expect(barthel.value).toBe('85/100');
+    expect(elemento.textContent).toContain('Debe estar entre 0 y 100.');
+    expect(barthel.value).toBe('851');
     expect(barthel.getAttribute('aria-invalid')).toBe('true');
 
     escribir(elemento, '#campo-s13-barthel', '85');

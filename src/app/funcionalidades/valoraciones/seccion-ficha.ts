@@ -1,14 +1,23 @@
-import { Component, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import type {
   Bloque,
   Campo,
   Celda,
+  Formato,
   FuenteDato,
   Seccion,
   ValorContenido,
 } from '../../core/valoraciones/valoraciones.model';
-import { idCampo, MAX_TEXTO_LARGO, textoDe, type GrupoFicha } from './ficha-formulario';
+import {
+  formatosDe,
+  idCampo,
+  MAX_TEXTO_LARGO,
+  placeholderDe,
+  textoDe,
+  type GrupoFicha,
+} from './ficha-formulario';
+import { FormatoNumerico } from './formato-numerico';
 
 export interface Automaticos {
   fisioterapeuta: string;
@@ -38,7 +47,7 @@ const COLORES_DOLOR = [
  */
 @Component({
   selector: 'app-seccion-ficha',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, FormatoNumerico],
   templateUrl: './seccion-ficha.html',
   styleUrl: './seccion-ficha.css',
 })
@@ -56,6 +65,18 @@ export class SeccionFicha {
 
   protected readonly coloresDolor = COLORES_DOLOR;
   protected readonly maxTextoLargo = MAX_TEXTO_LARGO;
+  private readonly formatos = computed(() => formatosDe([this.seccion()]));
+
+  /** `undefined` si la clave es texto libre; `null` si es un número sin rango. */
+  protected formatoDe(clave: string): Formato | null | undefined {
+    return this.formatos().get(clave);
+  }
+
+  /** El texto guía de la ficha o, en los numéricos, el rango que admiten. */
+  protected guia(clave: string, propio?: string): string {
+    const formato = this.formatoDe(clave);
+    return formato === undefined ? (propio ?? '') : placeholderDe(formato);
+  }
 
   protected control(clave: string): FormControl<ValorContenido> {
     return this.grupo().controls[clave]!;

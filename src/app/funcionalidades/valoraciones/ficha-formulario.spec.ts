@@ -6,6 +6,9 @@ import {
   datosPorSeccion,
   erroresDeFormato,
   estructuraDe,
+  largoDe,
+  limpiarNumero,
+  placeholderDe,
   textoDe,
   ubicarCampo,
 } from './ficha-formulario';
@@ -85,15 +88,38 @@ describe('ficha-formulario (SPEC C §7–§8)', () => {
     expect(datos[12]).toBe(1);
   });
 
-  it('señala los números con unidades y acepta los decimales', () => {
+  it('decisión del 24-11-2026: cada formato filtra lo que se escribe', () => {
+    const entero = { k: 'entero', min: 0, max: 10 } as const;
+    const grados = { k: 'entero', min: -180, max: 360 } as const;
+    const kg = { k: 'decimal', min: 0.3, max: 400 } as const;
+    expect(limpiarNumero('8/10', entero)).toBe('810');
+    expect(limpiarNumero('-5', entero)).toBe('5');
+    expect(limpiarNumero('-15°', grados)).toBe('-15');
+    expect(limpiarNumero('78.456 kg', kg)).toBe('78,45');
+    expect(limpiarNumero('1,2,3', kg)).toBe('1,23');
+    expect(limpiarNumero('12080', { k: 'presion' })).toBe('120/80');
+    expect(limpiarNumero('90/6o0', { k: 'presion' })).toBe('90/60');
+    expect(placeholderDe(entero)).toBe('0–10');
+    expect(placeholderDe(kg)).toBe('0,3–400');
+    expect(placeholderDe({ k: 'presion' })).toBe('120/80');
+    expect(largoDe(entero)).toBe(2);
+    expect(largoDe(grados)).toBe(4);
+    expect(largoDe(kg)).toBe(6);
+  });
+
+  it('señala los números con unidades, fuera de rango o no enteros', () => {
     const estructura = estructuraDe(neuro);
     const grupo = construirGrupo(estructura, {
       's13.barthel': '85/100',
       's13.lawton_brody': '6',
       's11.10mwt': ',8',
+      's13.scim_iii_si_lme': '101',
+      's2.caidas.n_ultimas_4_semanas': '1,5',
     });
     expect(erroresDeFormato(estructura, grupo)).toEqual([
+      { clave: 's2.caidas.n_ultimas_4_semanas', mensaje: 'Debe ser un número entero.' },
       { clave: 's13.barthel', mensaje: 'Escribe solo el número, sin unidades.' },
+      { clave: 's13.scim_iii_si_lme', mensaje: 'Debe estar entre 0 y 100.' },
     ]);
   });
 

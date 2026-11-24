@@ -25,18 +25,25 @@ export type FuenteDato =
   | 'contactoParentesco'
   | 'contactoTelefono';
 
+/** Cómo se escribe un valor numérico (rango amplio, solo contra errores de tipeo). */
+export type Formato =
+  | { k: 'entero'; min: number; max: number }
+  | { k: 'decimal'; min: number; max: number }
+  | { k: 'presion' };
+
 export interface Parte {
   id: string;
   etiqueta: string;
   unidad?: string;
   tipo?: 'fecha' | 'hora';
   ancho?: number;
+  formato?: Formato;
 }
 
 export type Campo =
   | { id: string; k: 'texto'; etiqueta: string; placeholder?: string; completo?: boolean }
   | { id: string; k: 'area'; etiqueta: string; placeholder?: string }
-  | { id: string; k: 'numero'; etiqueta: string; unidad: string }
+  | { id: string; k: 'numero'; etiqueta: string; unidad: string; formato?: Formato }
   | { id: string; k: 'fecha'; etiqueta: string }
   | { id: string; k: 'unica'; etiqueta: string; opciones: string[]; completo?: boolean }
   | { id: string; k: 'multiple'; etiqueta: string; opciones: string[]; otroLibre?: boolean }
@@ -60,6 +67,7 @@ export type Celda =
       placeholder?: string;
       tipo?: 'fecha';
       habilitadaPor?: string;
+      formato?: Formato;
     }
   | { k: 'unica'; id: string; opciones: string[] }
   | { k: 'partes'; id: string; partes: Parte[]; habilitadaPor?: string }
