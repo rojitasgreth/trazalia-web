@@ -315,6 +315,36 @@ describe('PaginaFormularioHistoria', () => {
     peticion.flush({ historia: { idHistoria: 'h4' } });
   });
 
+  it('decisión del 24-11-2026: datos al nacer con números, lista y Sí/No', async () => {
+    await abrir('REHAB_INFANTIL');
+    const sangre = elemento().querySelector<HTMLSelectElement>('#infantil-tipoSangre')!;
+    expect(Array.from(sangre.options).map((o) => o.textContent?.trim())).toEqual([
+      'Selecciona',
+      'A+',
+      'A−',
+      'B+',
+      'B−',
+      'AB+',
+      'AB−',
+      'O+',
+      'O−',
+    ]);
+    const peso = elemento().querySelector<HTMLInputElement>('#infantil-peso')!;
+    expect(peso.placeholder).toBe('kg (0,3–7)');
+    peso.value = '3.25 kg';
+    peso.dispatchEvent(new Event('input'));
+    expect(peso.value).toBe('3,25');
+    const gestas = elemento().querySelector<HTMLInputElement>('#infantil-gestas')!;
+    expect(gestas.type).toBe('text');
+    expect(gestas.getAttribute('inputmode')).toBe('numeric');
+    const respiro = Array.from(elemento().querySelectorAll('fieldset')).find(
+      (f) => f.querySelector('legend')?.textContent?.trim() === 'Respiró',
+    )!;
+    expect(Array.from(respiro.querySelectorAll('label')).map((l) => l.textContent?.trim())).toEqual(
+      ['Sí', 'No'],
+    );
+  });
+
   it('RF-015: envía el representante normalizado y calcula su edad', async () => {
     const pagina = await abrir('REHAB_INFANTIL');
     rellenar(pagina, {
@@ -328,9 +358,15 @@ describe('PaginaFormularioHistoria', () => {
       },
     });
 
-    expect((elemento().querySelector('#representante-edad') as HTMLInputElement).type).toBe(
-      'number',
-    );
+    // Decisión del 24-11-2026: texto con teclado numérico y solo dígitos (sin "e" ni "-").
+    const edad = elemento().querySelector('#representante-edad') as HTMLInputElement;
+    expect(edad.getAttribute('inputmode')).toBe('numeric');
+    expect(edad.getAttribute('maxlength')).toBe('3');
+    const cedula = elemento().querySelector('#representante-cedula') as HTMLInputElement;
+    expect(cedula.getAttribute('maxlength')).toBe('9');
+    cedula.value = 'V-12.345.678';
+    cedula.dispatchEvent(new Event('input'));
+    expect(cedula.value).toBe('12345678');
     expect(elemento().textContent).not.toContain('Puedes guardar sin representante');
 
     await enviar();

@@ -26,6 +26,9 @@ import type {
   TipoHistoria,
 } from '../../core/historias/historias.model';
 import type { CentroMedico } from '../../core/centros/centros.model';
+import type { Formato } from '../../core/valoraciones/valoraciones.model';
+import { placeholderDe } from '../valoraciones/ficha-formulario';
+import { FormatoNumerico } from '../valoraciones/formato-numerico';
 import {
   CAMPOS_REPRESENTANTE,
   DIRECCION,
@@ -171,6 +174,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
     DialogoPropagar,
     BuscadorCentro,
     DialogoNuevoCentro,
+    FormatoNumerico,
   ],
   template: `
     <div class="pagina">
@@ -312,12 +316,16 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                       @default {
                         <input
                           [id]="'representante-' + campo.clave"
-                          [type]="campo.tipo === 'numero' ? 'number' : 'text'"
+                          type="text"
+                          [appFormato]="
+                            campo.clave === 'cedula'
+                              ? formatoCedula
+                              : campo.tipo === 'numero'
+                                ? formatoEdad
+                                : undefined
+                          "
                           [formControlName]="campo.clave"
                           [placeholder]="campo.placeholder ?? ''"
-                          [attr.min]="campo.tipo === 'numero' ? 0 : null"
-                          [attr.inputmode]="campo.clave === 'cedula' ? 'numeric' : null"
-                          [attr.maxlength]="campo.clave === 'cedula' ? 9 : null"
                           [attr.aria-invalid]="
                             campo.clave === 'cedula' && muestraError('representante.cedula')
                           "
@@ -400,8 +408,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                             <input
                               id="cedula"
                               formControlName="cedula"
-                              inputmode="numeric"
-                              maxlength="9"
+                              [appFormato]="formatoCedula"
                               placeholder="Número de cédula"
                               [attr.aria-invalid]="muestraError('documento')"
                               aria-describedby="documento-msg"
@@ -569,8 +576,7 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                             [attr.data-insignia]="insignia(campo.clave) || null"
                             [placeholder]="placeholder(campo)"
                             [attr.max]="campo.tipo === 'fecha' ? hoy : null"
-                            [attr.maxlength]="campo.tipo === 'tel' ? 11 : null"
-                            [attr.inputmode]="campo.tipo === 'tel' ? 'numeric' : null"
+                            [appFormato]="campo.tipo === 'tel' ? formatoTelefono : undefined"
                             [attr.aria-invalid]="
                               muestraError(campo.clave) || controlInvalido(campo.clave)
                             "
@@ -622,6 +628,17 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                             </div>
                           </fieldset>
                         }
+                        @case ('seleccion') {
+                          <div class="campo">
+                            <label [for]="'infantil-' + c.clave">{{ c.etiqueta }}</label>
+                            <select [id]="'infantil-' + c.clave" [formControlName]="c.clave">
+                              <option [ngValue]="null">Selecciona</option>
+                              @for (opcion of c.opciones; track opcion) {
+                                <option [ngValue]="opcion">{{ opcion }}</option>
+                              }
+                            </select>
+                          </div>
+                        }
                         @case ('edad') {
                           <div class="campo">
                             <label [for]="'infantil-' + c.clave">{{ c.etiqueta }}</label>
@@ -643,17 +660,17 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                             <label [for]="'infantil-' + c.clave">{{ c.etiqueta }}</label>
                             <input
                               [id]="'infantil-' + c.clave"
-                              [type]="c.tipo === 'numero' ? 'number' : 'text'"
-                              [attr.min]="c.tipo === 'numero' ? 0 : null"
+                              type="text"
+                              [appFormato]="formatoInfantil(c)"
                               [formControlName]="c.clave"
-                              [placeholder]="c.placeholder ?? ''"
+                              [placeholder]="guiaInfantil(c)"
                               [attr.aria-describedby]="
-                                c.ayuda ? 'infantil-' + c.clave + '-msg' : null
+                                ayudaInfantil(c) ? 'infantil-' + c.clave + '-msg' : null
                               "
                             />
-                            @if (c.ayuda) {
+                            @if (ayudaInfantil(c); as ayuda) {
                               <span [id]="'infantil-' + c.clave + '-msg'" class="mensaje">{{
-                                c.ayuda
+                                ayuda
                               }}</span>
                             }
                           </div>
@@ -1343,6 +1360,28 @@ export class PaginaFormularioHistoria {
 
   protected esInfantilCompleto(campo: CampoInfantilDef): boolean {
     return 'completo' in campo && !!campo.completo;
+  }
+
+  // Decisión del 24-11-2026: los campos numéricos solo dejan escribir dígitos
+  // (y una coma en los decimales), con el largo que admite la API.
+  protected readonly formatoCedula: Formato = { k: 'entero', min: 0, max: 999_999_999 };
+  protected readonly formatoTelefono: Formato = { k: 'entero', min: 0, max: 99_999_999_999 };
+  protected readonly formatoEdad: Formato = { k: 'entero', min: 0, max: 120 };
+
+  protected formatoInfantil(campo: CampoInfantilDef): Formato | undefined {
+    if (campo.tipo === 'numero') return { k: 'entero', min: 0, max: campo.max };
+    if (campo.tipo === 'decimal') return { k: 'decimal', min: campo.min, max: campo.max };
+    return undefined;
+  }
+
+  protected guiaInfantil(campo: CampoInfantilDef): string {
+    if (campo.tipo === 'decimal')
+      return `${campo.unidad} (${placeholderDe(this.formatoInfantil(campo)!)})`;
+    return 'placeholder' in campo ? (campo.placeholder ?? '') : '';
+  }
+
+  protected ayudaInfantil(campo: CampoInfantilDef): string | null {
+    return 'ayuda' in campo ? (campo.ayuda ?? null) : null;
   }
 
   /** v1.6 RF-029: la corrección manual, o la edad calculada con la F.N. (y la E.G.). */

@@ -14,7 +14,22 @@ export type CampoInfantilDef =
       ayuda?: string;
       opcional?: boolean;
     }
-  | { tipo: 'numero'; clave: CampoInfantil; etiqueta: string; placeholder?: string; ayuda?: string }
+  | {
+      tipo: 'numero';
+      clave: CampoInfantil;
+      etiqueta: string;
+      max: number;
+      placeholder?: string;
+      ayuda?: string;
+    }
+  | {
+      tipo: 'decimal';
+      clave: CampoInfantil;
+      etiqueta: string;
+      min: number;
+      max: number;
+      unidad: string;
+    }
   | {
       tipo: 'opciones';
       clave: CampoInfantil;
@@ -22,10 +37,21 @@ export type CampoInfantilDef =
       opciones: readonly string[];
       completo?: boolean;
     }
+  | { tipo: 'seleccion'; clave: CampoInfantil; etiqueta: string; opciones: readonly string[] }
   | { tipo: 'edad'; clave: 'edadCronologica' | 'edadCorregida'; etiqueta: string; ayuda: string };
 
-export const CONTROL_PRENATAL = ['Sí', 'No'] as const;
+export const SI_NO = ['Sí', 'No'] as const;
+export const CONTROL_PRENATAL = SI_NO;
 export const ALIMENTACION = ['LME', 'LM + F', 'LM + Alimentación'] as const;
+export const TIPOS_SANGRE = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−'] as const;
+
+/** Respuesta Sí/No de los datos al nacer (decisión del 24-11-2026). */
+const siNo = (clave: CampoInfantil, etiqueta: string): CampoInfantilDef => ({
+  tipo: 'opciones',
+  clave,
+  etiqueta,
+  opciones: SI_NO,
+});
 
 export const ANTECEDENTES_MATERNOS: readonly CampoInfantilDef[] = [
   {
@@ -35,11 +61,11 @@ export const ANTECEDENTES_MATERNOS: readonly CampoInfantilDef[] = [
     opciones: CONTROL_PRENATAL,
   },
   { tipo: 'texto', clave: 'controlPrenatalDesde', etiqueta: 'Desde', placeholder: 'Ej.: semana 8' },
-  { tipo: 'numero', clave: 'gestas', etiqueta: 'Gestas' },
-  { tipo: 'numero', clave: 'formulaP', etiqueta: 'P' },
-  { tipo: 'numero', clave: 'formulaF', etiqueta: 'F' },
-  { tipo: 'numero', clave: 'formulaC', etiqueta: 'C' },
-  { tipo: 'numero', clave: 'formulaA', etiqueta: 'A' },
+  { tipo: 'numero', clave: 'gestas', etiqueta: 'Gestas', max: 30 },
+  { tipo: 'numero', clave: 'formulaP', etiqueta: 'P', max: 30 },
+  { tipo: 'numero', clave: 'formulaF', etiqueta: 'F', max: 30 },
+  { tipo: 'numero', clave: 'formulaC', etiqueta: 'C', max: 30 },
+  { tipo: 'numero', clave: 'formulaA', etiqueta: 'A', max: 30 },
   {
     tipo: 'texto',
     clave: 'infeccionesUrinarias',
@@ -53,7 +79,7 @@ export const ANTECEDENTES_MATERNOS: readonly CampoInfantilDef[] = [
   { tipo: 'texto', clave: 'consumoAlcohol', etiqueta: 'Consumo de alcohol' },
   { tipo: 'texto', clave: 'consumoTabaco', etiqueta: 'Tabaco' },
   { tipo: 'texto', clave: 'consumoOtros', etiqueta: 'Otros', opcional: true },
-  { tipo: 'texto', clave: 'tipoSangre', etiqueta: 'Tipo de sangre' },
+  { tipo: 'seleccion', clave: 'tipoSangre', etiqueta: 'Tipo de sangre', opciones: TIPOS_SANGRE },
   {
     tipo: 'texto',
     clave: 'complicacionesMaternas',
@@ -68,6 +94,7 @@ export const DATOS_AL_NACER: readonly CampoInfantilDef[] = [
     tipo: 'numero',
     clave: 'edadGestacional',
     etiqueta: 'E.G.',
+    max: 45,
     placeholder: 'semanas',
     ayuda: 'Edad gestacional al nacer, en semanas.',
   },
@@ -83,18 +110,18 @@ export const DATOS_AL_NACER: readonly CampoInfantilDef[] = [
     etiqueta: 'Edad corregida',
     ayuda: 'Se calcula con la F.N. y la E.G. Puedes corregirla.',
   },
-  { tipo: 'texto', clave: 'peso', etiqueta: 'Peso', placeholder: 'kg' },
-  { tipo: 'texto', clave: 'talla', etiqueta: 'Talla', placeholder: 'cm' },
-  { tipo: 'texto', clave: 'respiro', etiqueta: 'Respiró' },
-  { tipo: 'texto', clave: 'lloro', etiqueta: 'Lloró' },
+  { tipo: 'decimal', clave: 'peso', etiqueta: 'Peso', min: 0.3, max: 7, unidad: 'kg' },
+  { tipo: 'decimal', clave: 'talla', etiqueta: 'Talla', min: 20, max: 70, unidad: 'cm' },
+  siNo('respiro', 'Respiró'),
+  siNo('lloro', 'Lloró'),
   { tipo: 'texto', clave: 'apgar', etiqueta: 'APGAR' },
-  { tipo: 'texto', clave: 'requirioO2', etiqueta: 'Requirió: O2' },
-  { tipo: 'texto', clave: 'fototerapia', etiqueta: 'Fototerapia' },
+  siNo('requirioO2', 'Requirió: O2'),
+  siNo('fototerapia', 'Fototerapia'),
   { tipo: 'texto', clave: 'transfusiones', etiqueta: 'Transfusiones', opcional: true },
-  { tipo: 'texto', clave: 'sdr', etiqueta: 'Complicaciones: SDR' },
-  { tipo: 'texto', clave: 'sepsisNeonatal', etiqueta: 'Sepsis neonatal' },
-  { tipo: 'texto', clave: 'ictericia', etiqueta: 'Ictericia' },
-  { tipo: 'texto', clave: 'anemia', etiqueta: 'Anemia' },
+  siNo('sdr', 'Complicaciones: SDR'),
+  siNo('sepsisNeonatal', 'Sepsis neonatal'),
+  siNo('ictericia', 'Ictericia'),
+  siNo('anemia', 'Anemia'),
   { tipo: 'texto', clave: 'neonatalOtros', etiqueta: 'Otros', opcional: true, completo: true },
   { tipo: 'texto', clave: 'vacunas', etiqueta: 'Vacunas' },
   {
