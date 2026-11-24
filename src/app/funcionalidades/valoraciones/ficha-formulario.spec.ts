@@ -1,3 +1,8 @@
+import {
+  largoDe,
+  limpiarNumero,
+  placeholderDe,
+} from '../../compartido/formularios/formato-numerico';
 import type { Ficha } from '../../core/valoraciones/valoraciones.model';
 import {
   calcularImc,
@@ -6,9 +11,6 @@ import {
   datosPorSeccion,
   erroresDeFormato,
   estructuraDe,
-  largoDe,
-  limpiarNumero,
-  placeholderDe,
   textoDe,
   ubicarCampo,
 } from './ficha-formulario';
@@ -92,13 +94,18 @@ describe('ficha-formulario (SPEC C §7–§8)', () => {
     const entero = { k: 'entero', min: 0, max: 10 } as const;
     const grados = { k: 'entero', min: -180, max: 360 } as const;
     const kg = { k: 'decimal', min: 0.3, max: 400 } as const;
-    expect(limpiarNumero('8/10', entero)).toBe('810');
+    // Se corta al largo máximo (también al pegar), sin depender del maxlength.
+    expect(limpiarNumero('8/10', entero)).toBe('81');
     expect(limpiarNumero('-5', entero)).toBe('5');
     expect(limpiarNumero('-15°', grados)).toBe('-15');
     expect(limpiarNumero('78.456 kg', kg)).toBe('78,45');
     expect(limpiarNumero('1,2,3', kg)).toBe('1,23');
     expect(limpiarNumero('12080', { k: 'presion' })).toBe('120/80');
+    // Una sistólica menor de 100 no empieza por 1 ni 2.
+    expect(limpiarNumero('9060', { k: 'presion' })).toBe('90/60');
+    expect(limpiarNumero('120 / 80', { k: 'presion' })).toBe('120/80');
     expect(limpiarNumero('90/6o0', { k: 'presion' })).toBe('90/60');
+    expect(largoDe({ k: 'entero', min: -1000, max: 10 })).toBe(5);
     expect(placeholderDe(entero)).toBe('0–10');
     expect(placeholderDe(kg)).toBe('0,3–400');
     expect(placeholderDe({ k: 'presion' })).toBe('120/80');

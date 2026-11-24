@@ -329,6 +329,7 @@
                                 [id]="idDe(celda.id + '.' + p.id)"
                                 [class.calculado]="p.id === 'imc'"
                                 [appFormato]="formatoDe(celda.id + '.' + p.id)"
+                                [placeholder]="p.id === 'imc' ? '' : guia(celda.id + '.' + p.id)"
                                 [attr.aria-label]="
                                   etiquetaCelda(bloque, fila, c) + ' · ' + (p.etiqueta || 'valor')
                                 "

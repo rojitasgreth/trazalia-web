@@ -2,12 +2,13 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { FormatoNumerico } from '../../compartido/formularios/formato-numerico';
 import { UsuariosApi } from '../../core/admin/usuarios-api';
 
 /** A09 · Un administrador crea un usuario y dispara su invitación (BR-002–007). */
 @Component({
   selector: 'app-pagina-crear-usuario',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, FormatoNumerico],
   template: `
     <section class="panel">
       <h1>Nuevo usuario</h1>
@@ -27,8 +28,7 @@ import { UsuariosApi } from '../../core/admin/usuarios-api';
               id="cedula"
               type="text"
               formControlName="cedula"
-              inputmode="numeric"
-              maxlength="9"
+              [appFormato]="{ k: 'entero', min: 0, max: 999999999 }"
             />
           </div>
         </div>
@@ -55,8 +55,7 @@ import { UsuariosApi } from '../../core/admin/usuarios-api';
             type="tel"
             aria-describedby="telefono-ayuda"
             formControlName="telefono"
-            inputmode="numeric"
-            maxlength="11"
+            [appFormato]="{ k: 'entero', min: 0, max: 99999999999 }"
           />
           <p id="telefono-ayuda" class="ayuda">Solo dígitos, máximo 11 (p. ej. 04125550000).</p>
         </div>

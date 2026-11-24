@@ -26,9 +26,12 @@ import type {
   TipoHistoria,
 } from '../../core/historias/historias.model';
 import type { CentroMedico } from '../../core/centros/centros.model';
-import type { Formato } from '../../core/valoraciones/valoraciones.model';
-import { placeholderDe } from '../valoraciones/ficha-formulario';
-import { FormatoNumerico } from '../valoraciones/formato-numerico';
+import {
+  FormatoNumerico,
+  placeholderDe,
+  validadorFormato,
+  type Formato,
+} from '../../compartido/formularios/formato-numerico';
 import {
   CAMPOS_REPRESENTANTE,
   DIRECCION,
@@ -78,10 +81,21 @@ interface Propuesta {
   plan: PlanAutocompletado;
 }
 
-// v1.6 §8.4: el [type] dinámico de los campos numéricos hace que Angular use el
-// accesor de texto, así que el valor puede llegar como cadena.
+// v1.6 §8.4: los campos numéricos son de texto (con filtro de dígitos), así que
+// el valor llega como cadena y se convierte a entero al enviar.
 const CLAVES_NUMERICAS = new Set(
   CAMPOS_INFANTILES_DEF.filter((c) => c.tipo === 'numero').map((c) => c.clave),
+);
+
+/** Decisión del 24-11-2026: formato de los numéricos infantiles, con el rango de la API. */
+const FORMATOS_INFANTILES = new Map<CampoInfantil, Formato>(
+  CAMPOS_INFANTILES_DEF.flatMap((c): [CampoInfantil, Formato][] =>
+    c.tipo === 'numero'
+      ? [[c.clave, { k: 'entero', min: 0, max: c.max }]]
+      : c.tipo === 'decimal'
+        ? [[c.clave, { k: 'decimal', min: c.min, max: c.max }]]
+        : [],
+  ),
 );
 
 function aEntero(valor: unknown): number | null {
@@ -664,11 +678,21 @@ function fechaNoFutura(control: AbstractControl<string>): ValidationErrors | nul
                               [appFormato]="formatoInfantil(c)"
                               [formControlName]="c.clave"
                               [placeholder]="guiaInfantil(c)"
+                              [class.invalido]="!!errorInfantil(c.clave)"
+                              [attr.aria-invalid]="!!errorInfantil(c.clave)"
                               [attr.aria-describedby]="
-                                ayudaInfantil(c) ? 'infantil-' + c.clave + '-msg' : null
+                                errorInfantil(c.clave) || ayudaInfantil(c)
+                                  ? 'infantil-' + c.clave + '-msg'
+                                  : null
                               "
                             />
-                            @if (ayudaInfantil(c); as ayuda) {
+                            @if (errorInfantil(c.clave); as error) {
+                              <span
+                                [id]="'infantil-' + c.clave + '-msg'"
+                                class="mensaje mensaje--error"
+                                >{{ error }}</span
+                              >
+                            } @else if (ayudaInfantil(c); as ayuda) {
                               <span [id]="'infantil-' + c.clave + '-msg'" class="mensaje">{{
                                 ayuda
                               }}</span>
@@ -872,7 +896,12 @@ export class PaginaFormularioHistoria {
       Object.fromEntries(
         CLAVES_INFANTILES.map((clave) => [
           clave,
-          new FormControl<string | number | null>(null, Validators.min(0)),
+          new FormControl<string | number | null>(
+            null,
+            FORMATOS_INFANTILES.has(clave)
+              ? validadorFormato(FORMATOS_INFANTILES.get(clave)!)
+              : null,
+          ),
         ]),
       ) as Record<CampoInfantil, FormControl<string | number | null>>,
     ),
@@ -1369,15 +1398,20 @@ export class PaginaFormularioHistoria {
   protected readonly formatoEdad: Formato = { k: 'entero', min: 0, max: 120 };
 
   protected formatoInfantil(campo: CampoInfantilDef): Formato | undefined {
-    if (campo.tipo === 'numero') return { k: 'entero', min: 0, max: campo.max };
-    if (campo.tipo === 'decimal') return { k: 'decimal', min: campo.min, max: campo.max };
-    return undefined;
+    return FORMATOS_INFANTILES.get(campo.clave);
   }
 
   protected guiaInfantil(campo: CampoInfantilDef): string {
     if (campo.tipo === 'decimal')
       return `${campo.unidad} (${placeholderDe(this.formatoInfantil(campo)!)})`;
     return 'placeholder' in campo ? (campo.placeholder ?? '') : '';
+  }
+
+  /** Motivo por el que un numérico infantil no es válido, una vez tocado o al enviar. */
+  protected errorInfantil(clave: CampoInfantil): string | null {
+    const control = this.formulario.controls.datosInfantiles.get(clave);
+    const error = control?.errors?.['formato'] as string | undefined;
+    return error && (control!.touched || this.intentado()) ? error : null;
   }
 
   protected ayudaInfantil(campo: CampoInfantilDef): string | null {

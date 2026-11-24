@@ -3,6 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { Observable } from 'rxjs';
+import { FormatoNumerico } from '../../compartido/formularios/formato-numerico';
 import { UsuariosApi } from '../../core/admin/usuarios-api';
 import type { UsuarioAdministrado } from '../../core/admin/usuarios.model';
 import { AuthStore } from '../../core/auth/auth.store';
@@ -11,7 +12,7 @@ import type { RolUsuario, SesionPropia } from '../../core/auth/auth.model';
 /** A14 · Detalle y edición de un usuario administrado, con sus sesiones activas. */
 @Component({
   selector: 'app-pagina-detalle-usuario',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, FormatoNumerico],
   template: `
     @if (cargando()) {
       <p role="status" class="estado-carga">Cargando…</p>
@@ -90,8 +91,7 @@ import type { RolUsuario, SesionPropia } from '../../core/auth/auth.model';
               type="tel"
               aria-describedby="telefono-ayuda"
               formControlName="telefono"
-              inputmode="numeric"
-              maxlength="11"
+              [appFormato]="{ k: 'entero', min: 0, max: 99999999999 }"
             />
             <p id="telefono-ayuda" class="ayuda">Solo dígitos, máximo 11 (p. ej. 04125550000).</p>
           </div>

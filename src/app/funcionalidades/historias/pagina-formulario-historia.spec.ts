@@ -89,9 +89,16 @@ describe('PaginaFormularioHistoria', () => {
   it('limita la cédula a 9 caracteres y los teléfonos a 11 dígitos', async () => {
     const pagina = await abrir();
 
-    expect(elemento().querySelector('#cedula')?.getAttribute('maxlength')).toBe('9');
-    expect(elemento().querySelector('#telefono')?.getAttribute('maxlength')).toBe('11');
-    expect(elemento().querySelector('#contactoTelefono')?.getAttribute('maxlength')).toBe('11');
+    // Lo que sobra se corta al escribir o pegar, sin perder dígitos por los separadores.
+    const escribirEn = (selector: string, valor: string) => {
+      const input = elemento().querySelector<HTMLInputElement>(selector)!;
+      input.value = valor;
+      input.dispatchEvent(new Event('input'));
+      return input.value;
+    };
+    expect(escribirEn('#cedula', '1234567890')).toBe('123456789');
+    expect(escribirEn('#telefono', '0412-555-01345')).toBe('04125550134');
+    expect(escribirEn('#contactoTelefono', '0414 555 2290 9')).toBe('04145552290');
 
     rellenar(pagina, {
       nombre: 'Carlos',
@@ -343,6 +350,18 @@ describe('PaginaFormularioHistoria', () => {
     expect(Array.from(respiro.querySelectorAll('label')).map((l) => l.textContent?.trim())).toEqual(
       ['Sí', 'No'],
     );
+
+    // Fuera del rango de la API se avisa en el campo y no se envía.
+    gestas.value = '99';
+    gestas.dispatchEvent(new Event('input'));
+    gestas.dispatchEvent(new Event('blur'));
+    harness.fixture.detectChanges();
+    expect(gestas.getAttribute('aria-invalid')).toBe('true');
+    expect(elemento().querySelector('#infantil-gestas-msg')?.textContent).toContain(
+      'Debe estar entre 0 y 30.',
+    );
+    await enviar();
+    http.expectNone('/api/v1/historias');
   });
 
   it('RF-015: envía el representante normalizado y calcula su edad', async () => {
@@ -361,9 +380,7 @@ describe('PaginaFormularioHistoria', () => {
     // Decisión del 24-11-2026: texto con teclado numérico y solo dígitos (sin "e" ni "-").
     const edad = elemento().querySelector('#representante-edad') as HTMLInputElement;
     expect(edad.getAttribute('inputmode')).toBe('numeric');
-    expect(edad.getAttribute('maxlength')).toBe('3');
     const cedula = elemento().querySelector('#representante-cedula') as HTMLInputElement;
-    expect(cedula.getAttribute('maxlength')).toBe('9');
     cedula.value = 'V-12.345.678';
     cedula.dispatchEvent(new Event('input'));
     expect(cedula.value).toBe('12345678');

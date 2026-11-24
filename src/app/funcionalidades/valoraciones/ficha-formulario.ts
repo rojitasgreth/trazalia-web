@@ -1,4 +1,5 @@
 import { FormControl, FormGroup } from '@angular/forms';
+import { errorDeFormato } from '../../compartido/formularios/formato-numerico';
 import type {
   Contenido,
   ErrorCampo,
@@ -105,27 +106,6 @@ export function idCampo(clave: string): string {
 /** Límite de los textos largos; la API aplica el mismo. */
 export const MAX_TEXTO_LARGO = 1000;
 
-const NUMERO = /^-?(\d+([.,]\d+)?|[.,]\d+)$/;
-const PRESION = /^\d{2,3}\/\d{2,3}$/;
-
-function conComa(n: number): string {
-  return String(n).replace('.', ',');
-}
-
-/** Misma regla que la API (trazalia-api, dominio/contenido.ts `errorDeFormato`). */
-export function errorDeFormato(texto: string, formato: Formato | null): string | null {
-  if (formato?.k === 'presion') {
-    return PRESION.test(texto) ? null : 'Escribe la presión como 120/80.';
-  }
-  if (!NUMERO.test(texto)) return 'Escribe solo el número, sin unidades.';
-  if (!formato) return null;
-  if (formato.k === 'entero' && !/^-?\d+$/.test(texto)) return 'Debe ser un número entero.';
-  const valor = Number(texto.replace(',', '.'));
-  return valor < formato.min || valor > formato.max
-    ? `Debe estar entre ${conComa(formato.min)} y ${conComa(formato.max)}.`
-    : null;
-}
-
 /** Los números mal escritos se señalan sin ir al servidor; este sigue validando todo. */
 export function erroresDeFormato(estructura: EstructuraFicha, grupo: GrupoFicha): ErrorCampo[] {
   const errores: ErrorCampo[] = [];
@@ -137,52 +117,6 @@ export function erroresDeFormato(estructura: EstructuraFicha, grupo: GrupoFicha)
     if (mensaje) errores.push({ clave, mensaje });
   }
   return errores;
-}
-
-/** Texto guía del campo: el rango ("0–10") o el ejemplo de la presión. */
-export function placeholderDe(formato: Formato | null): string {
-  if (!formato) return 'Solo el número';
-  if (formato.k === 'presion') return '120/80';
-  return `${conComa(formato.min)}–${conComa(formato.max)}`;
-}
-
-/** Caracteres máximos que admite un formato (con signo y dos decimales). */
-export function largoDe(formato: Formato | null): number {
-  if (!formato) return 12;
-  if (formato.k === 'presion') return 7;
-  const signo = formato.min < 0 ? 1 : 0;
-  const enteros = String(Math.trunc(formato.max)).length;
-  return signo + enteros + (formato.k === 'decimal' ? 3 : 0);
-}
-
-/**
- * Deja solo lo que el formato admite mientras se escribe: dígitos, una coma
- * decimal (el punto se cambia por coma), el signo si el rango es negativo y,
- * en la presión, la barra tras la sistólica.
- */
-export function limpiarNumero(texto: string, formato: Formato | null): string {
-  if (formato?.k === 'presion') {
-    const [antes = '', ...resto] = texto.split('/');
-    const sistolica = antes.replace(/\D/g, '');
-    if (resto.length === 0) {
-      return sistolica.length > 3 ? `${sistolica.slice(0, 3)}/${sistolica.slice(3, 6)}` : sistolica;
-    }
-    return `${sistolica.slice(0, 3)}/${resto.join('').replace(/\D/g, '').slice(0, 3)}`;
-  }
-  const signo = formato && formato.min < 0 && texto.trimStart().startsWith('-') ? '-' : '';
-  let cuerpo = '';
-  let decimales = -1;
-  for (const caracter of texto) {
-    if (/\d/.test(caracter)) {
-      if (decimales >= 2) continue;
-      cuerpo += caracter;
-      if (decimales >= 0) decimales++;
-    } else if ((caracter === ',' || caracter === '.') && decimales < 0 && formato?.k !== 'entero') {
-      cuerpo += ',';
-      decimales = 0;
-    }
-  }
-  return signo + cuerpo;
 }
 
 /** Pestaña y nombre visible de una clave, para decir qué campo hay que corregir. */

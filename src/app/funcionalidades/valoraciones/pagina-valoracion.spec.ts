@@ -236,7 +236,6 @@ describe('PaginaValoracion', () => {
     await estable();
     const barthel = elemento.querySelector<HTMLInputElement>('#campo-s13-barthel')!;
     expect(barthel.getAttribute('inputmode')).toBe('numeric');
-    expect(barthel.getAttribute('maxlength')).toBe('3');
     expect(barthel.placeholder).toBe('0–100');
     // Lo que no es un dígito no llega a escribirse.
     escribir(elemento, '#campo-s13-barthel', '85/1');

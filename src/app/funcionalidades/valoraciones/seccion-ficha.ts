@@ -9,15 +9,8 @@ import type {
   Seccion,
   ValorContenido,
 } from '../../core/valoraciones/valoraciones.model';
-import {
-  formatosDe,
-  idCampo,
-  MAX_TEXTO_LARGO,
-  placeholderDe,
-  textoDe,
-  type GrupoFicha,
-} from './ficha-formulario';
-import { FormatoNumerico } from './formato-numerico';
+import { FormatoNumerico, placeholderDe } from '../../compartido/formularios/formato-numerico';
+import { formatosDe, idCampo, MAX_TEXTO_LARGO, textoDe, type GrupoFicha } from './ficha-formulario';
 
 export interface Automaticos {
   fisioterapeuta: string;

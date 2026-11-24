@@ -1,3 +1,4 @@
+import type { Formato } from '../../compartido/formularios/formato-numerico';
 import type { EstadoHistoria, TipoHistoria } from '../historias/historias.model';
 
 // Contrato de /api/v1/historias/:id/valoracion (trazalia-api, módulo
@@ -25,11 +26,7 @@ export type FuenteDato =
   | 'contactoParentesco'
   | 'contactoTelefono';
 
-/** Cómo se escribe un valor numérico (rango amplio, solo contra errores de tipeo). */
-export type Formato =
-  | { k: 'entero'; min: number; max: number }
-  | { k: 'decimal'; min: number; max: number }
-  | { k: 'presion' };
+export type { Formato };
 
 export interface Parte {
   id: string;
